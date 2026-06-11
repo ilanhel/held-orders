@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { OtpService, otpStore } from '@/services/otp.service'
+import { createSession } from '@/lib/session'
+import { cookies } from 'next/headers'
 import { i18n } from '@/lib/i18n'
 
 const requestSchema = z.object({
@@ -34,15 +36,57 @@ export async function POST(req: NextRequest) {
       console.log(`[DEV OTP] Phone: ${phone}, Code: ${code || 'N/A'}`)
     }
 
-    // Demo mode: surface the code to the client so a shared test link works
-    // without a real WhatsApp/SMS provider. Opt-in only — never on by default.
-    const demoCode =
-      process.env.DEMO_MODE === 'true' ? otpStore.get(phone)?.code : undefined
+    // Demo mode: log the user in directly, with no OTP code step.
+    // The in-memory OTP store is not reliable on serverless (each request may
+    // hit a different instance), so for shareable TEST links we skip the code
+    // entirely. Opt-in only via DEMO_MODE — never on a real production deploy.
+    if (process.env.DEMO_MODE === 'true') {
+      const user = await OtpService.getUserByPhone(phone)
+      if (!user || !user.active) {
+        return NextResponse.json(
+          {
+            error: { code: 'USER_NOT_FOUND', message: i18n.errors.notFound },
+          },
+          { status: 404 }
+        )
+      }
+
+      const token = await createSession(
+        user.id,
+        user.phone,
+        user.role,
+        user.storeId || undefined
+      )
+
+      const response = NextResponse.json({
+        success: true,
+        demoLogin: true,
+        user: {
+          id: user.id,
+          name: user.name,
+          phone: user.phone,
+          role: user.role,
+          storeId: user.storeId,
+          storeName: user.store?.name,
+        },
+      })
+
+      const cookieStore = await cookies()
+      const maxAge =
+        parseInt(process.env.SESSION_MAX_AGE_DAYS || '90') * 24 * 60 * 60
+      cookieStore.set('session', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge,
+      })
+
+      return response
+    }
 
     return NextResponse.json({
       success: true,
       message: i18n.auth.otpSent,
-      ...(demoCode ? { demoCode } : {}),
     })
   } catch (error) {
     if (error instanceof z.ZodError) {

@@ -32,6 +32,14 @@ export default function LoginPage() {
         setError(data?.error?.message ?? i18n.errors.serverError)
         return
       }
+      // Demo mode: server logs us in directly, no code step.
+      if (data?.demoLogin && data?.user) {
+        const role = data.user.role
+        if (role === 'WAREHOUSE') router.push('/warehouse')
+        else if (role === 'ADMIN') router.push('/admin')
+        else router.push('/catalog')
+        return
+      }
       setInfo(i18n.auth.otpSent)
       setDemoCode(typeof data?.demoCode === 'string' ? data.demoCode : null)
       setStep('otp')
