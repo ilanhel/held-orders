@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { i18n } from '@/lib/i18n'
 
@@ -15,9 +15,9 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
   const [demoCode, setDemoCode] = useState<string | null>(null)
+  const autoTried = useRef(false)
 
-  async function requestOtp(e: React.FormEvent) {
-    e.preventDefault()
+  async function submitPhone(phoneValue: string) {
     setLoading(true)
     setError(null)
     setInfo(null)
@@ -25,7 +25,7 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/otp/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone }),
+        body: JSON.stringify({ phone: phoneValue }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -49,6 +49,26 @@ export default function LoginPage() {
       setLoading(false)
     }
   }
+
+  async function requestOtp(e: React.FormEvent) {
+    e.preventDefault()
+    await submitPhone(phone)
+  }
+
+  // Allow a direct-entry link like /login?phone=0550000003 to prefill the
+  // phone and (in demo mode) log in with a single click.
+  useEffect(() => {
+    if (autoTried.current) return
+    autoTried.current = true
+    const params = new URLSearchParams(window.location.search)
+    const p = (params.get('phone') ?? '').replace(/\D/g, '')
+    if (p.length === 10) {
+      setPhone(p)
+      void submitPhone(p)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
 
   async function verifyOtp(e: React.FormEvent) {
     e.preventDefault()
