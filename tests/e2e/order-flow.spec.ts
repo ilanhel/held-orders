@@ -30,8 +30,8 @@ test('franchisee submits an order and warehouse ships it', async ({ browser }) =
   await login(fr, '0550000001')
   await expect(fr).toHaveURL(/\/catalog$/)
 
-  // Add the first available product to the cart
-  const addButton = fr.getByRole('button', { name: 'הוספה' }).first()
+  // Add the first available product to the cart (the "+" button on the stepper)
+  const addButton = fr.getByRole('button', { name: 'הוסף כמות' }).first()
   await expect(addButton).toBeVisible()
   await addButton.click()
 

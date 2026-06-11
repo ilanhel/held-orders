@@ -8,8 +8,8 @@ const MAX_QTY = 9999
 /**
  * Quantity stepper with −/+ buttons AND a directly editable number field,
  * so the franchisee can either tap to adjust or type an exact quantity.
- * Typed values are committed on blur / Enter. qty=0 hides the field
- * (handled by the parent, which shows an "add" button instead).
+ * Typed values are committed on blur / Enter. Always visible (including
+ * qty=0); the "−" button is disabled while the quantity is 0.
  */
 export function QtyStepper({
   qty,
@@ -54,7 +54,7 @@ export function QtyStepper({
       <button
         type="button"
         onClick={() => onChange(qty - 1)}
-        disabled={saving || disabled}
+        disabled={saving || disabled || qty <= 0}
         className={`${btn} rounded-md bg-white text-gray-700 font-bold active:bg-gray-200 disabled:opacity-50 flex-shrink-0`}
         aria-label={i18n.catalog.decreaseQty}
       >

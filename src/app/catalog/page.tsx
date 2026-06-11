@@ -329,34 +329,7 @@ function ProductCard({
       <div className="text-base font-bold text-primary mb-2 whitespace-nowrap">
         {formatPrice(product.priceAgorot)}
       </div>
-      <QtyControl qty={qty} onChange={onChange} saving={saving} disabled={isOOS} />
+      <QtyStepper qty={qty} onChange={onChange} saving={saving} disabled={isOOS} />
     </div>
-  )
-}
-
-function QtyControl({
-  qty,
-  onChange,
-  saving,
-  disabled,
-}: {
-  qty: number
-  onChange: (qty: number) => void
-  saving: boolean
-  disabled?: boolean
-}) {
-  if (qty === 0) {
-    return (
-      <button
-        onClick={() => onChange(1)}
-        disabled={saving || disabled}
-        className="w-full py-2 bg-primary text-white rounded-lg font-medium text-sm disabled:opacity-50 active:bg-red-700"
-      >
-        {saving ? '…' : i18n.catalog.addToCart}
-      </button>
-    )
-  }
-  return (
-    <QtyStepper qty={qty} onChange={onChange} saving={saving} disabled={disabled} />
   )
 }
