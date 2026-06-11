@@ -1,0 +1,441 @@
+'use client'
+
+import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
+import { i18n } from '@/lib/i18n'
+
+type ProductStatus = 'ACTIVE' | 'OUT_OF_STOCK' | 'HIDDEN'
+
+type Product = {
+  id: string
+  name: string
+  barcode: string
+  categoryId: string
+  categoryName: string
+  priceAgorot: number
+  status: ProductStatus
+}
+
+type Category = { id: string; name: string; sortOrder: number }
+
+const STATUS_COLOR: Record<ProductStatus, string> = {
+  ACTIVE: 'bg-green-100 text-green-800',
+  OUT_OF_STOCK: 'bg-orange-100 text-orange-800',
+  HIDDEN: 'bg-gray-200 text-gray-600',
+}
+
+const t = i18n.admin.catalog
+
+export default function AdminCatalogPage() {
+  const router = useRouter()
+  const [products, setProducts] = useState<Product[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [search, setSearch] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
+  const [showForm, setShowForm] = useState(false)
+  const [busyId, setBusyId] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    try {
+      const params = new URLSearchParams()
+      if (search.trim()) params.set('search', search.trim())
+      if (categoryFilter) params.set('categoryId', categoryFilter)
+      if (statusFilter) params.set('status', statusFilter)
+      const res = await fetch(`/api/products?${params.toString()}`)
+      if (res.status === 401) {
+        router.push('/login')
+        return
+      }
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data?.error?.message ?? i18n.errors.serverError)
+      } else {
+        setProducts(data.products ?? [])
+        setCategories(data.categories ?? [])
+        setError(null)
+      }
+    } catch {
+      setError(i18n.errors.network)
+    } finally {
+      setLoading(false)
+    }
+  }, [search, categoryFilter, statusFilter, router])
+
+  useEffect(() => {
+    const id = setTimeout(() => void load(), 250)
+    return () => clearTimeout(id)
+  }, [load])
+
+  function flash(msg: string) {
+    setMessage(msg)
+    setTimeout(() => setMessage(null), 2500)
+  }
+
+  async function changeStatus(p: Product, status: ProductStatus) {
+    setBusyId(p.id)
+    setError(null)
+    try {
+      const res = await fetch(`/api/products/${p.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data?.error?.message ?? i18n.errors.serverError)
+      } else {
+        setProducts((prev) => prev.map((x) => (x.id === p.id ? { ...x, status } : x)))
+        flash(t.updated)
+      }
+    } catch {
+      setError(i18n.errors.network)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function savePrice(p: Product, shekels: string) {
+    const value = Number(shekels)
+    if (!Number.isFinite(value) || value < 0) return
+    const priceAgorot = Math.round(value * 100)
+    if (priceAgorot === p.priceAgorot) return
+    setBusyId(p.id)
+    setError(null)
+    try {
+      const res = await fetch(`/api/products/${p.id}/price`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ priceAgorot }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data?.error?.message ?? i18n.errors.serverError)
+      } else {
+        setProducts((prev) =>
+          prev.map((x) => (x.id === p.id ? { ...x, priceAgorot } : x))
+        )
+        flash(t.priceUpdated)
+      }
+    } catch {
+      setError(i18n.errors.network)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function logout() {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    router.push('/login')
+  }
+
+  return (
+    <main className="min-h-screen bg-gray-50">
+      <header className="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
+        <button
+          onClick={() => router.push('/admin')}
+          className="text-gray-500 hover:text-primary text-lg"
+          aria-label="חזרה"
+        >
+          ›
+        </button>
+        <h1 className="text-xl font-bold text-primary flex-1">{t.title}</h1>
+        <button onClick={logout} className="text-sm text-gray-500">
+          {i18n.auth.logout}
+        </button>
+      </header>
+
+      <section className="px-4 py-4 max-w-4xl mx-auto">
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-2 mb-4">
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t.search}
+            className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+          />
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
+          >
+            <option value="">{t.allCategories}</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
+          >
+            <option value="">{t.allStatuses}</option>
+            {(['ACTIVE', 'OUT_OF_STOCK', 'HIDDEN'] as const).map((s) => (
+              <option key={s} value={s}>
+                {t.statuses[s]}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-sm text-gray-500">
+            {products.length} {t.productCount}
+          </span>
+          <button
+            onClick={() => setShowForm((v) => !v)}
+            className="bg-primary text-white rounded-lg px-4 py-2 text-sm font-semibold hover:opacity-90"
+          >
+            {showForm ? t.cancel : `+ ${t.newProduct}`}
+          </button>
+        </div>
+
+        {message && (
+          <div className="mb-3 p-2 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm text-center">
+            {message}
+          </div>
+        )}
+        {error && (
+          <div className="mb-3 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+            {error}
+          </div>
+        )}
+
+        {showForm && (
+          <NewProductForm
+            categories={categories}
+            onCancel={() => setShowForm(false)}
+            onCreated={() => {
+              setShowForm(false)
+              flash(t.created)
+              void load()
+            }}
+            onError={setError}
+          />
+        )}
+
+        {loading ? (
+          <p className="text-gray-500 py-8 text-center">{i18n.common.loading}</p>
+        ) : products.length === 0 ? (
+          <p className="text-gray-500 py-12 text-center">{t.noProducts}</p>
+        ) : (
+          <ul className="space-y-2">
+            {products.map((p) => (
+              <li
+                key={p.id}
+                className="bg-white rounded-xl border border-gray-200 p-3 flex flex-col sm:flex-row sm:items-center gap-3"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-gray-900">{p.name}</span>
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLOR[p.status]}`}
+                    >
+                      {t.statuses[p.status]}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-0.5">
+                    {p.categoryName} · {p.barcode}
+                  </div>
+                </div>
+
+                {/* Inline price edit */}
+                <PriceEditor
+                  product={p}
+                  disabled={busyId === p.id}
+                  onSave={(v) => savePrice(p, v)}
+                />
+
+                {/* Status quick actions */}
+                <div className="flex gap-1">
+                  {p.status !== 'ACTIVE' && (
+                    <button
+                      onClick={() => changeStatus(p, 'ACTIVE')}
+                      disabled={busyId === p.id}
+                      className="text-xs px-2 py-1 rounded-md bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50"
+                    >
+                      {t.markActive}
+                    </button>
+                  )}
+                  {p.status !== 'OUT_OF_STOCK' && (
+                    <button
+                      onClick={() => changeStatus(p, 'OUT_OF_STOCK')}
+                      disabled={busyId === p.id}
+                      className="text-xs px-2 py-1 rounded-md bg-orange-50 text-orange-700 hover:bg-orange-100 disabled:opacity-50"
+                    >
+                      {t.markOutOfStock}
+                    </button>
+                  )}
+                  {p.status !== 'HIDDEN' && (
+                    <button
+                      onClick={() => changeStatus(p, 'HIDDEN')}
+                      disabled={busyId === p.id}
+                      className="text-xs px-2 py-1 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50"
+                    >
+                      {t.markHidden}
+                    </button>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </main>
+  )
+}
+
+function PriceEditor({
+  product,
+  disabled,
+  onSave,
+}: {
+  product: Product
+  disabled: boolean
+  onSave: (shekels: string) => void
+}) {
+  const [value, setValue] = useState((product.priceAgorot / 100).toFixed(2))
+
+  useEffect(() => {
+    setValue((product.priceAgorot / 100).toFixed(2))
+  }, [product.priceAgorot])
+
+  return (
+    <div className="flex items-center gap-1">
+      <input
+        type="number"
+        inputMode="decimal"
+        min={0}
+        step={0.01}
+        value={value}
+        disabled={disabled}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={() => onSave(value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+        }}
+        className="w-24 rounded-lg border border-gray-300 px-2 py-1 text-sm text-left focus:border-primary focus:outline-none disabled:opacity-50"
+        aria-label={t.price}
+      />
+      <span className="text-xs text-gray-400">₪</span>
+    </div>
+  )
+}
+
+function NewProductForm({
+  categories,
+  onCancel,
+  onCreated,
+  onError,
+}: {
+  categories: Category[]
+  onCancel: () => void
+  onCreated: () => void
+  onError: (msg: string) => void
+}) {
+  const [name, setName] = useState('')
+  const [barcode, setBarcode] = useState('')
+  const [categoryId, setCategoryId] = useState(categories[0]?.id ?? '')
+  const [price, setPrice] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const valid = name.trim() && barcode.trim() && categoryId && Number(price) >= 0 && price !== ''
+
+  async function submit() {
+    if (!valid || saving) return
+    setSaving(true)
+    try {
+      const res = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          barcode: barcode.trim(),
+          categoryId,
+          priceAgorot: Math.round(Number(price) * 100),
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        onError(data?.error?.message ?? i18n.errors.serverError)
+      } else {
+        onCreated()
+      }
+    } catch {
+      onError(i18n.errors.network)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="mb-4 bg-white rounded-xl border border-gray-200 p-4">
+      <h3 className="font-semibold text-gray-800 mb-3">{t.addProduct}</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <label className="block">
+          <span className="text-xs text-gray-500">{t.name}</span>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+          />
+        </label>
+        <label className="block">
+          <span className="text-xs text-gray-500">{t.barcode}</span>
+          <input
+            value={barcode}
+            onChange={(e) => setBarcode(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-left focus:border-primary focus:outline-none"
+          />
+        </label>
+        <label className="block">
+          <span className="text-xs text-gray-500">{t.category}</span>
+          <select
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
+          >
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="text-xs text-gray-500">{t.price}</span>
+          <input
+            type="number"
+            inputMode="decimal"
+            min={0}
+            step={0.01}
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-left focus:border-primary focus:outline-none"
+          />
+        </label>
+      </div>
+      <div className="flex gap-2 mt-4">
+        <button
+          onClick={submit}
+          disabled={!valid || saving}
+          className="bg-primary text-white rounded-lg px-4 py-2 text-sm font-semibold hover:opacity-90 disabled:opacity-50"
+        >
+          {saving ? t.saving : t.save}
+        </button>
+        <button
+          onClick={onCancel}
+          className="rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100"
+        >
+          {t.cancel}
+        </button>
+      </div>
+    </div>
+  )
+}
