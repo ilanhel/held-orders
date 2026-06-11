@@ -46,8 +46,8 @@ export function QtyStepper({
 
   const btn =
     size === 'sm'
-      ? 'w-8 h-8 text-lg'
-      : 'w-9 h-9 text-xl'
+      ? 'w-9 h-9 text-lg'
+      : 'w-10 h-10 text-xl'
 
   return (
     <div className="flex items-center justify-between bg-gray-50 rounded-lg p-1 gap-1">

@@ -13,6 +13,8 @@ const config: Config = {
         sans: ['var(--font-system-ui)', 'system-ui', 'sans-serif'],
       },
       colors: {
+        primary: '#ef4444',
+        secondary: '#f97316',
         held: {
           primary: '#ef4444',
           secondary: '#f97316',
