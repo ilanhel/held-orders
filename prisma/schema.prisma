@@ -1,0 +1,193 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Store {
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique
+  phone     String
+  active    Boolean  @default(true)
+  users     User[]
+  orders    Order[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String   @unique
+  role      Role
+  storeId   String?
+  store     Store?   @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([phone])
+  @@index([role])
+  @@index([storeId])
+}
+
+enum Role {
+  FRANCHISEE
+  WAREHOUSE
+  ADMIN
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  sortOrder Int       @default(999)
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([sortOrder])
+}
+
+model Product {
+  id              String        @id @default(cuid())
+  name            String
+  barcode         String        @unique
+  categoryId      String
+  category        Category      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  priceAgorot     Int
+  imagePath       String?
+  status          ProductStatus @default(ACTIVE)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  priceHistory    PriceChange[]
+  orderItems      OrderItem[]
+
+  @@index([categoryId])
+  @@index([status])
+  @@index([barcode])
+}
+
+enum ProductStatus {
+  ACTIVE
+  OUT_OF_STOCK
+  HIDDEN
+}
+
+model PriceChange {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  oldAgorot Int
+  newAgorot Int
+  changedBy String
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@index([createdAt])
+}
+
+model Order {
+  id        String   @id @default(cuid())
+  number    Int?     @unique
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  createdBy String
+  status    OrderStatus @default(DRAFT)
+  submittedAt DateTime?
+  items     OrderItem[]
+  history   OrderStatusHistory[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([storeId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([submittedAt])
+}
+
+enum OrderStatus {
+  DRAFT
+  SUBMITTED
+  RECEIVED
+  PICKING
+  READY
+  SHIPPED
+  CANCELLED
+}
+
+model OrderItem {
+  id             String  @id @default(cuid())
+  orderId        String
+  order          Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId      String
+  product        Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  qtyOrdered     Int
+  qtySupplied    Int?
+  priceAgorot    Int
+  productName    String
+  productBarcode String
+  picked         Boolean @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([orderId, productId])
+  @@index([orderId])
+  @@index([productId])
+}
+
+model OrderStatusHistory {
+  id        String      @id @default(cuid())
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  from      OrderStatus
+  to        OrderStatus
+  byUserId  String
+  createdAt DateTime    @default(now())
+
+  @@index([orderId])
+  @@index([createdAt])
+}
+
+model Announcement {
+  id          String   @id @default(cuid())
+  title       String
+  body        String
+  requiresAck Boolean  @default(false)
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+  acks        AnnouncementAck[]
+
+  @@index([expiresAt])
+}
+
+model AnnouncementAck {
+  id              String       @id @default(cuid())
+  announcementId  String
+  announcement    Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  userId          String
+  createdAt       DateTime     @default(now())
+
+  @@unique([announcementId, userId])
+  @@index([announcementId])
+}
+
+model NotificationLog {
+  id        String   @id @default(cuid())
+  event     String
+  channel   String
+  toPhone   String
+  payload   String   // JSON stringified
+  success   Boolean
+  createdAt DateTime @default(now())
+
+  @@index([event])
+  @@index([createdAt])
+}
