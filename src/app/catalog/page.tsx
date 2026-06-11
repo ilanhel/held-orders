@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { i18n } from '@/lib/i18n'
 import { formatPrice, formatTotal } from '@/lib/format'
 import { AnnouncementBanner } from '@/components/AnnouncementBanner'
+import { QtyStepper } from '@/components/QtyStepper'
 
 type Product = {
   id: string
@@ -356,26 +357,6 @@ function QtyControl({
     )
   }
   return (
-    <div className="flex items-center justify-between bg-gray-50 rounded-lg p-1">
-      <button
-        onClick={() => onChange(qty - 1)}
-        disabled={saving}
-        className="w-9 h-9 rounded-md bg-white text-gray-700 text-xl font-bold active:bg-gray-200 disabled:opacity-50"
-        aria-label="הפחת כמות"
-      >
-        −
-      </button>
-      <span className="text-lg font-semibold text-gray-800 min-w-[2ch] text-center">
-        {saving ? '…' : qty}
-      </span>
-      <button
-        onClick={() => onChange(qty + 1)}
-        disabled={saving}
-        className="w-9 h-9 rounded-md bg-primary text-white text-xl font-bold active:bg-red-700 disabled:opacity-50"
-        aria-label="הוסף כמות"
-      >
-        +
-      </button>
-    </div>
+    <QtyStepper qty={qty} onChange={onChange} saving={saving} disabled={disabled} />
   )
 }

@@ -44,6 +44,9 @@ export const i18n = {
     addToCart: 'הוספה',
     remove: 'הסרה',
     inCart: 'בסל',
+    decreaseQty: 'הפחת כמות',
+    increaseQty: 'הוסף כמות',
+    quantity: 'כמות',
   },
   orders: {
     myOrders: 'ההזמנות שלי',

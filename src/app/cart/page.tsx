@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { i18n } from '@/lib/i18n'
 import { formatPrice, formatTotal } from '@/lib/format'
+import { QtyStepper } from '@/components/QtyStepper'
 
 type OrderItem = {
   id: string
@@ -163,25 +164,12 @@ export default function CartPage() {
                   </div>
                 </div>
                 <div className="flex flex-col items-center justify-center gap-1">
-                  <div className="flex items-center bg-gray-50 rounded-lg p-1">
-                    <button
-                      onClick={() => changeQty(item.productId, item.qtyOrdered - 1)}
-                      disabled={savingFor === item.productId}
-                      className="w-8 h-8 rounded-md bg-white text-gray-700 text-lg font-bold active:bg-gray-200 disabled:opacity-50"
-                    >
-                      −
-                    </button>
-                    <span className="text-base font-semibold min-w-[2ch] text-center px-1">
-                      {savingFor === item.productId ? '…' : item.qtyOrdered}
-                    </span>
-                    <button
-                      onClick={() => changeQty(item.productId, item.qtyOrdered + 1)}
-                      disabled={savingFor === item.productId}
-                      className="w-8 h-8 rounded-md bg-primary text-white text-lg font-bold active:bg-red-700 disabled:opacity-50"
-                    >
-                      +
-                    </button>
-                  </div>
+                  <QtyStepper
+                    qty={item.qtyOrdered}
+                    onChange={(q) => changeQty(item.productId, q)}
+                    saving={savingFor === item.productId}
+                    size="sm"
+                  />
                   <button
                     onClick={() => changeQty(item.productId, 0)}
                     disabled={savingFor === item.productId}
