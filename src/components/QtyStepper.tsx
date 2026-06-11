@@ -26,14 +26,39 @@ export function QtyStepper({
 }) {
   const [text, setText] = useState(String(qty))
   const editing = useRef(false)
+  const commitTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Keep the field in sync with the saved qty when not actively editing.
   useEffect(() => {
     if (!editing.current) setText(String(qty))
   }, [qty])
 
+  // Clear any pending debounced commit when the component unmounts.
+  useEffect(() => {
+    return () => {
+      if (commitTimer.current) clearTimeout(commitTimer.current)
+    }
+  }, [])
+
+  // Commit a raw string value to the parent (no field reset — used while typing).
+  function commitValue(raw: string) {
+    const n = parseInt(raw, 10)
+    if (Number.isNaN(n)) return
+    const clamped = Math.max(0, Math.min(MAX_QTY, n))
+    if (clamped !== qty) onChange(clamped)
+  }
+
+  // Auto-save shortly after the user stops typing, so a typed quantity
+  // updates the cart even without an explicit blur / Enter (mobile numeric
+  // keyboards have no return key).
+  function scheduleCommit(raw: string) {
+    if (commitTimer.current) clearTimeout(commitTimer.current)
+    commitTimer.current = setTimeout(() => commitValue(raw), 500)
+  }
+
   function commit() {
     editing.current = false
+    if (commitTimer.current) clearTimeout(commitTimer.current)
     const n = parseInt(text, 10)
     if (Number.isNaN(n)) {
       setText(String(qty))
@@ -65,12 +90,16 @@ export function QtyStepper({
         inputMode="numeric"
         dir="ltr"
         value={text}
-        disabled={saving || disabled}
+        disabled={disabled}
         onFocus={(e) => {
           editing.current = true
           e.currentTarget.select()
         }}
-        onChange={(e) => setText(e.target.value.replace(/\D/g, '').slice(0, 4))}
+        onChange={(e) => {
+          const v = e.target.value.replace(/\D/g, '').slice(0, 4)
+          setText(v)
+          scheduleCommit(v)
+        }}
         onBlur={commit}
         onKeyDown={(e) => {
           if (e.key === 'Enter') e.currentTarget.blur()
