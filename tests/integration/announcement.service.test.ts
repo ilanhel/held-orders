@@ -14,6 +14,9 @@ async function resetDb() {
   await prisma.notificationLog.deleteMany()
   await prisma.announcementAck.deleteMany()
   await prisma.announcement.deleteMany()
+  await prisma.orderItem.deleteMany()
+  await prisma.orderStatusHistory.deleteMany()
+  await prisma.order.deleteMany()
   await prisma.user.deleteMany()
   await prisma.store.deleteMany()
 }
@@ -123,6 +126,58 @@ describe('AnnouncementService', () => {
         where: { announcementId: a.id, userId },
       })
       expect(count).toBe(1)
+    })
+  })
+
+  describe('listForAdmin', () => {
+    it('returns ack counts against the active-franchisee audience', async () => {
+      const a = await AnnouncementService.create({
+        title: 'דרוש אישור',
+        body: '...',
+        requiresAck: true,
+      })
+      await AnnouncementService.ack(a.id, userId)
+
+      const list = await AnnouncementService.listForAdmin()
+      const row = list.find((x) => x.id === a.id)!
+      expect(row.recipientCount).toBe(2)
+      expect(row.ackCount).toBe(1)
+    })
+
+    it('includes expired announcements (unlike the user list)', async () => {
+      await prisma.announcement.create({
+        data: {
+          title: 'ישן',
+          body: '...',
+          requiresAck: false,
+          expiresAt: new Date(Date.now() - 60_000),
+        },
+      })
+      const list = await AnnouncementService.listForAdmin()
+      expect(list.some((x) => x.title === 'ישן')).toBe(true)
+    })
+  })
+
+  describe('getAcks', () => {
+    it('splits recipients into acked (with time) and pending', async () => {
+      const a = await AnnouncementService.create({
+        title: 'בדיקה',
+        body: '...',
+        requiresAck: true,
+      })
+      await AnnouncementService.ack(a.id, userId)
+
+      const detail = await AnnouncementService.getAcks(a.id)
+      expect(detail.recipientCount).toBe(2)
+      expect(detail.acked.map((u) => u.userId)).toEqual([userId])
+      expect(detail.acked[0].ackedAt).toBeInstanceOf(Date)
+      expect(detail.pending.map((u) => u.userId)).toEqual([user2Id])
+    })
+
+    it('throws ANNOUNCEMENT_NOT_FOUND for an unknown id', async () => {
+      await expect(AnnouncementService.getAcks('nope')).rejects.toThrow(
+        'ANNOUNCEMENT_NOT_FOUND'
+      )
     })
   })
 })

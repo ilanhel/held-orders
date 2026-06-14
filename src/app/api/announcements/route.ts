@@ -14,9 +14,12 @@ const createSchema = z.object({
 /**
  * GET /api/announcements
  * List active announcements for the current user.
+ * With ?admin=1 (WAREHOUSE/ADMIN): list all announcements with ack counts.
  */
 export async function GET(req: NextRequest) {
-  const { authenticated, session, error } = await requireSession(req)
+  const isAdminView = req.nextUrl.searchParams.get('admin') === '1'
+  const roles = isAdminView ? ['WAREHOUSE', 'ADMIN'] : undefined
+  const { authenticated, session, error } = await requireSession(req, roles)
   if (!authenticated) {
     return NextResponse.json(
       { error: { code: 'UNAUTHORIZED', message: i18n.errors.unauthorized } },
@@ -30,6 +33,10 @@ export async function GET(req: NextRequest) {
     )
   }
   try {
+    if (isAdminView) {
+      const announcements = await AnnouncementService.listForAdmin()
+      return NextResponse.json({ announcements })
+    }
     const announcements = await AnnouncementService.listForUser(session!.userId)
     return NextResponse.json({ announcements })
   } catch (err) {

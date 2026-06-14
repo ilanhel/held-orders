@@ -1,5 +1,6 @@
 import { PrismaClient, OrderStatus, ProductStatus, Role } from '@prisma/client'
 import { NotificationService } from './notifications'
+import { CatalogService } from './catalog.service'
 import type { NotificationEvent, NotificationRecipient } from './notifications/types'
 
 const prisma = new PrismaClient()
@@ -395,6 +396,16 @@ export class OrderService {
       include: { store: true, items: { orderBy: { createdAt: 'asc' } } },
     })
     const view = this.toView(updated!)
+
+    // Decrement tracked inventory when the order ships (qtySupplied if known).
+    if (to === OrderStatus.SHIPPED) {
+      await CatalogService.decrementStockForShipment(
+        view.items.map((i) => ({
+          productId: i.productId,
+          qty: i.qtySupplied ?? i.qtyOrdered,
+        }))
+      )
+    }
 
     // Notify franchisees of the store
     const eventType = STATUS_EVENT_MAP[to]

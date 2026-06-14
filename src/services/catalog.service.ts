@@ -27,6 +27,8 @@ export interface CatalogCategory {
 export interface AdminProduct extends CatalogProduct {
   categoryName: string
   createdAt: Date
+  stockQty: number
+  trackStock: boolean
 }
 
 export interface AdminCategory {
@@ -104,6 +106,15 @@ export class CatalogService {
     return this.toCatalogProduct(product)
   }
 
+  /**
+   * Lookup a single product by id. Returns null for HIDDEN or unknown ids.
+   */
+  static async getById(id: string): Promise<CatalogProduct | null> {
+    const product = await prisma.product.findUnique({ where: { id } })
+    if (!product || product.status === ProductStatus.HIDDEN) return null
+    return this.toCatalogProduct(product)
+  }
+
   // ---------------------------------------------------------------------------
   // Admin catalog management (§7.4) — ADMIN only (enforced at the API layer).
   // ---------------------------------------------------------------------------
@@ -140,6 +151,8 @@ export class CatalogService {
       ...this.toCatalogProduct(p),
       categoryName: p.category.name,
       createdAt: p.createdAt,
+      stockQty: p.stockQty,
+      trackStock: p.trackStock,
     }))
   }
 
@@ -197,6 +210,8 @@ export class CatalogService {
       ...this.toCatalogProduct(product),
       categoryName: category.name,
       createdAt: product.createdAt,
+      stockQty: product.stockQty,
+      trackStock: product.trackStock,
     }
   }
 
@@ -234,6 +249,8 @@ export class CatalogService {
       ...this.toCatalogProduct(updated),
       categoryName: updated.category.name,
       createdAt: updated.createdAt,
+      stockQty: updated.stockQty,
+      trackStock: updated.trackStock,
     }
   }
 
@@ -259,6 +276,8 @@ export class CatalogService {
         ...this.toCatalogProduct(product),
         categoryName: product.category.name,
         createdAt: product.createdAt,
+        stockQty: product.stockQty,
+        trackStock: product.trackStock,
       }
     }
 
@@ -295,12 +314,76 @@ export class CatalogService {
       ...this.toCatalogProduct(updated),
       categoryName: updated.category.name,
       createdAt: updated.createdAt,
+      stockQty: updated.stockQty,
+      trackStock: updated.trackStock,
     }
   }
 
   /** Quick status change (mark out of stock / back in stock / hide). */
   static async setStatus(id: string, status: ProductStatus): Promise<AdminProduct> {
     return this.updateProduct(id, { status })
+  }
+
+  /**
+   * Set the tracked stock quantity (and optionally toggle tracking) for a
+   * product. Throws 'PRODUCT_NOT_FOUND'. When tracking is on and stock reaches
+   * 0 the product is auto-marked OUT_OF_STOCK; when stock returns above 0 an
+   * OUT_OF_STOCK product is restored to ACTIVE (HIDDEN is never touched).
+   */
+  static async setStock(
+    id: string,
+    stockQty: number,
+    trackStock?: boolean
+  ): Promise<AdminProduct> {
+    if (!Number.isInteger(stockQty) || stockQty < 0) throw new Error('INVALID_QTY')
+    const product = await prisma.product.findUnique({ where: { id } })
+    if (!product) throw new Error('PRODUCT_NOT_FOUND')
+
+    const tracking = trackStock ?? product.trackStock
+    let status = product.status
+    if (tracking && product.status !== ProductStatus.HIDDEN) {
+      if (stockQty === 0) status = ProductStatus.OUT_OF_STOCK
+      else if (product.status === ProductStatus.OUT_OF_STOCK) status = ProductStatus.ACTIVE
+    }
+
+    const updated = await prisma.product.update({
+      where: { id },
+      data: { stockQty, trackStock: tracking, status },
+      include: { category: { select: { name: true } } },
+    })
+
+    return {
+      ...this.toCatalogProduct(updated),
+      categoryName: updated.category.name,
+      createdAt: updated.createdAt,
+      stockQty: updated.stockQty,
+      trackStock: updated.trackStock,
+    }
+  }
+
+  /**
+   * Decrement tracked stock when an order ships. Only products with
+   * trackStock=true are affected; stock never goes below 0. Products that hit
+   * 0 are auto-marked OUT_OF_STOCK (unless HIDDEN). Runs inside the caller's
+   * flow after a SHIPPED transition.
+   */
+  static async decrementStockForShipment(
+    items: { productId: string; qty: number }[]
+  ): Promise<void> {
+    for (const { productId, qty } of items) {
+      if (qty <= 0) continue
+      const product = await prisma.product.findUnique({ where: { id: productId } })
+      if (!product || !product.trackStock) continue
+      const newQty = Math.max(0, product.stockQty - qty)
+      const status =
+        newQty === 0 && product.status === ProductStatus.ACTIVE
+          ? ProductStatus.OUT_OF_STOCK
+          : product.status
+      await prisma.product.update({
+        where: { id: productId },
+        data: { stockQty: newQty, status },
+      })
+    }
   }
 
   private static toCatalogProduct(p: {

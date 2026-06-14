@@ -14,6 +14,8 @@ type Product = {
   categoryName: string
   priceAgorot: number
   status: ProductStatus
+  stockQty: number
+  trackStock: boolean
 }
 
 type Category = { id: string; name: string; sortOrder: number }
@@ -119,6 +121,38 @@ export default function AdminCatalogPage() {
           prev.map((x) => (x.id === p.id ? { ...x, priceAgorot } : x))
         )
         flash(t.priceUpdated)
+      }
+    } catch {
+      setError(i18n.errors.network)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function saveStock(p: Product, stockQty: number, trackStock: boolean) {
+    if (!Number.isInteger(stockQty) || stockQty < 0) return
+    if (stockQty === p.stockQty && trackStock === p.trackStock) return
+    setBusyId(p.id)
+    setError(null)
+    try {
+      const res = await fetch(`/api/products/${p.id}/stock`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stockQty, trackStock }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data?.error?.message ?? i18n.errors.serverError)
+      } else {
+        const updated = data.product as Product
+        setProducts((prev) =>
+          prev.map((x) =>
+            x.id === p.id
+              ? { ...x, stockQty: updated.stockQty, trackStock: updated.trackStock, status: updated.status }
+              : x
+          )
+        )
+        flash(t.stockUpdated)
       }
     } catch {
       setError(i18n.errors.network)
@@ -252,6 +286,13 @@ export default function AdminCatalogPage() {
                   onSave={(v) => savePrice(p, v)}
                 />
 
+                {/* Inline stock edit */}
+                <StockEditor
+                  product={p}
+                  disabled={busyId === p.id}
+                  onSave={(qty, track) => saveStock(p, qty, track)}
+                />
+
                 {/* Status quick actions */}
                 <div className="flex gap-1">
                   {p.status !== 'ACTIVE' && (
@@ -324,6 +365,57 @@ function PriceEditor({
         aria-label={t.price}
       />
       <span className="text-xs text-gray-400">₪</span>
+    </div>
+  )
+}
+
+function StockEditor({
+  product,
+  disabled,
+  onSave,
+}: {
+  product: Product
+  disabled: boolean
+  onSave: (qty: number, trackStock: boolean) => void
+}) {
+  const [value, setValue] = useState(String(product.stockQty))
+
+  useEffect(() => {
+    setValue(String(product.stockQty))
+  }, [product.stockQty])
+
+  return (
+    <div className="flex items-center gap-1">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => onSave(product.stockQty, !product.trackStock)}
+        className={`text-xs px-2 py-1 rounded-md disabled:opacity-50 ${
+          product.trackStock
+            ? 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+            : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+        }`}
+        aria-label={t.trackStock}
+        title={t.trackStock}
+      >
+        {product.trackStock ? t.trackStockOn : t.trackStockOff}
+      </button>
+      <input
+        type="number"
+        inputMode="numeric"
+        min={0}
+        step={1}
+        value={value}
+        disabled={disabled || !product.trackStock}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={() => onSave(Math.max(0, Math.round(Number(value) || 0)), product.trackStock)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+        }}
+        className="w-16 rounded-lg border border-gray-300 px-2 py-1 text-sm text-center focus:border-primary focus:outline-none disabled:opacity-50 disabled:bg-gray-50"
+        aria-label={t.stock}
+        title={t.stock}
+      />
     </div>
   )
 }

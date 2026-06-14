@@ -6,6 +6,7 @@ import { i18n } from '@/lib/i18n'
 import { formatPrice, formatTotal } from '@/lib/format'
 import { AnnouncementBanner } from '@/components/AnnouncementBanner'
 import { QtyStepper } from '@/components/QtyStepper'
+import { PushOptIn } from '@/components/PushOptIn'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 // Exponential backoff capped at 8s: 0.5s, 1s, 2s, 4s...
@@ -250,6 +251,12 @@ export default function CatalogPage() {
           📋 {i18n.orders.myOrders}
         </button>
         <button
+          onClick={() => router.push('/scan')}
+          className="text-sm font-medium text-gray-700 border border-gray-300 rounded-lg px-3 py-1.5"
+        >
+          📷 {i18n.scan.open}
+        </button>
+        <button
           onClick={reorderLast}
           disabled={reordering}
           className="text-sm font-medium text-primary border border-primary rounded-lg px-3 py-1.5 disabled:opacity-60"
@@ -272,6 +279,10 @@ export default function CatalogPage() {
       )}
 
       <AnnouncementBanner />
+
+      <div className="px-4 pt-3">
+        <PushOptIn />
+      </div>
 
       {/* Category nav */}
       {!searchResults && categories.length > 0 && (

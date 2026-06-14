@@ -55,3 +55,41 @@ self.addEventListener('fetch', (event) => {
     })
   )
 })
+
+/* ── Web Push ──────────────────────────────────────────────────────────────
+ * Payload shape (set by PushService): { title, body, url }.
+ */
+self.addEventListener('push', (event) => {
+  let data = {}
+  try {
+    data = event.data ? event.data.json() : {}
+  } catch (err) {
+    data = { body: event.data ? event.data.text() : '' }
+  }
+  const title = data.title || 'HELD'
+  const options = {
+    body: data.body || '',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    dir: 'rtl',
+    lang: 'he',
+    data: { url: data.url || '/' },
+  }
+  event.waitUntil(self.registration.showNotification(title, options))
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const target = (event.notification.data && event.notification.data.url) || '/'
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        const url = new URL(client.url)
+        if (url.pathname === target && 'focus' in client) return client.focus()
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(target)
+      return undefined
+    })
+  )
+})
+

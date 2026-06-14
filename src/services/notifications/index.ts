@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 import { ConsoleDriver, MockDriver } from './drivers'
 import { WhatsAppDriver } from './whatsapp'
+import { PushService } from './push'
 import { renderMessage } from './render'
 import type { NotificationDriver, NotificationEvent, NotificationRecipient } from './types'
 
@@ -68,6 +69,14 @@ class NotificationServiceImpl {
       })
     } catch (e) {
       console.error('[NotificationService] failed to log:', e)
+    }
+
+    // Additionally deliver via Web Push to any browsers this recipient has
+    // subscribed (no-op when VAPID is not configured). Never blocks the result.
+    try {
+      await PushService.sendToPhone(recipient.phone, event)
+    } catch (e) {
+      console.error('[NotificationService] push delivery failed:', e)
     }
   }
 

@@ -65,6 +65,8 @@ model Product {
   priceAgorot     Int
   imagePath       String?
   status          ProductStatus @default(ACTIVE)
+  stockQty        Int           @default(0)
+  trackStock      Boolean       @default(false)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   priceHistory    PriceChange[]
@@ -190,4 +192,15 @@ model NotificationLog {
 
   @@index([event])
   @@index([createdAt])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
