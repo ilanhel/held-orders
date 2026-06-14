@@ -297,6 +297,10 @@ export default function AdminCatalogPage() {
             onCreated={() => {
               setShowForm(false)
               flash(t.created)
+              // Clear filters so the newly created product is always visible.
+              setSearch('')
+              setCategoryFilter('')
+              setStatusFilter('')
               void load()
             }}
             onError={setError}
@@ -549,9 +553,12 @@ function NewProductForm({
   const [barcode, setBarcode] = useState('')
   const [categoryId, setCategoryId] = useState(categories[0]?.id ?? '')
   const [price, setPrice] = useState('')
+  const [imageFile, setImageFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
+  const imageInputRef = useRef<HTMLInputElement>(null)
 
   const valid = name.trim() && barcode.trim() && categoryId && Number(price) >= 0 && price !== ''
+  const imagePreview = imageFile ? URL.createObjectURL(imageFile) : null
 
   async function submit() {
     if (!valid || saving) return
@@ -570,9 +577,23 @@ function NewProductForm({
       const data = await res.json()
       if (!res.ok) {
         onError(data?.error?.message ?? i18n.errors.serverError)
-      } else {
-        onCreated()
+        return
       }
+      // If an image was chosen, upload it to the freshly created product.
+      const newId = data?.product?.id as string | undefined
+      if (newId && imageFile) {
+        const body = new FormData()
+        body.append('file', imageFile)
+        const imgRes = await fetch(`/api/products/${newId}/image`, {
+          method: 'POST',
+          body,
+        })
+        if (!imgRes.ok) {
+          const imgData = await imgRes.json().catch(() => null)
+          onError(imgData?.error?.message ?? i18n.errors.serverError)
+        }
+      }
+      onCreated()
     } catch {
       onError(i18n.errors.network)
     } finally {
@@ -626,6 +647,41 @@ function NewProductForm({
             className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-left focus:border-primary focus:outline-none"
           />
         </label>
+      </div>
+      <div className="mt-3">
+        <span className="text-xs text-gray-500">{t.image}</span>
+        <div className="mt-1 flex items-center gap-3">
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+          />
+          <button
+            type="button"
+            onClick={() => imageInputRef.current?.click()}
+            className="h-20 w-20 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden flex items-center justify-center text-gray-400 hover:border-primary"
+            title={t.imageUpload}
+            aria-label={t.imageUpload}
+          >
+            {imagePreview ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={imagePreview} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <span className="text-2xl leading-none">+</span>
+            )}
+          </button>
+          {imageFile && (
+            <button
+              type="button"
+              onClick={() => setImageFile(null)}
+              className="text-xs text-gray-400 hover:text-red-600"
+            >
+              {t.imageRemove}
+            </button>
+          )}
+        </div>
       </div>
       <div className="flex gap-2 mt-4">
         <button
