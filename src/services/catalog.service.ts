@@ -325,6 +325,35 @@ export class CatalogService {
   }
 
   /**
+   * Set (or clear) a product's image path/URL. Throws 'PRODUCT_NOT_FOUND'.
+   * Pass null to remove the image. Does not send notifications.
+   */
+  static async setImage(
+    id: string,
+    imagePath: string | null
+  ): Promise<AdminProduct> {
+    const exists = await prisma.product.findUnique({
+      where: { id },
+      select: { id: true },
+    })
+    if (!exists) throw new Error('PRODUCT_NOT_FOUND')
+
+    const updated = await prisma.product.update({
+      where: { id },
+      data: { imagePath },
+      include: { category: { select: { name: true } } },
+    })
+
+    return {
+      ...this.toCatalogProduct(updated),
+      categoryName: updated.category.name,
+      createdAt: updated.createdAt,
+      stockQty: updated.stockQty,
+      trackStock: updated.trackStock,
+    }
+  }
+
+  /**
    * Set the tracked stock quantity (and optionally toggle tracking) for a
    * product. Throws 'PRODUCT_NOT_FOUND'. When tracking is on and stock reaches
    * 0 the product is auto-marked OUT_OF_STOCK; when stock returns above 0 an

@@ -163,4 +163,27 @@ describe('CatalogService admin management', () => {
       )
     })
   })
+
+  describe('setImage', () => {
+    it('saves an image url on the product', async () => {
+      const existing = await prisma.product.findUnique({ where: { barcode: '7290000020001' } })
+      const updated = await CatalogService.setImage(existing!.id, 'https://cdn.example/img.jpg')
+      expect(updated.imagePath).toBe('https://cdn.example/img.jpg')
+      const fresh = await prisma.product.findUnique({ where: { id: existing!.id } })
+      expect(fresh!.imagePath).toBe('https://cdn.example/img.jpg')
+    })
+
+    it('clears the image when passed null', async () => {
+      const existing = await prisma.product.findUnique({ where: { barcode: '7290000020001' } })
+      await CatalogService.setImage(existing!.id, 'https://cdn.example/img.jpg')
+      const cleared = await CatalogService.setImage(existing!.id, null)
+      expect(cleared.imagePath).toBeNull()
+    })
+
+    it('throws PRODUCT_NOT_FOUND for unknown id', async () => {
+      await expect(CatalogService.setImage('nope', 'https://x/y.jpg')).rejects.toThrow(
+        'PRODUCT_NOT_FOUND'
+      )
+    })
+  })
 })

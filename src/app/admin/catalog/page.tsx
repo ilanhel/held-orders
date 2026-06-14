@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { i18n } from '@/lib/i18n'
 
@@ -16,6 +16,7 @@ type Product = {
   status: ProductStatus
   stockQty: number
   trackStock: boolean
+  imagePath: string | null
 }
 
 type Category = { id: string; name: string; sortOrder: number }
@@ -161,6 +162,54 @@ export default function AdminCatalogPage() {
     }
   }
 
+  async function uploadImage(p: Product, file: File) {
+    setBusyId(p.id)
+    setError(null)
+    try {
+      const body = new FormData()
+      body.append('file', file)
+      const res = await fetch(`/api/products/${p.id}/image`, {
+        method: 'POST',
+        body,
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data?.error?.message ?? i18n.errors.serverError)
+      } else {
+        const updated = data.product as Product
+        setProducts((prev) =>
+          prev.map((x) => (x.id === p.id ? { ...x, imagePath: updated.imagePath } : x))
+        )
+        flash(t.imageUpdated)
+      }
+    } catch {
+      setError(i18n.errors.network)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function removeImage(p: Product) {
+    setBusyId(p.id)
+    setError(null)
+    try {
+      const res = await fetch(`/api/products/${p.id}/image`, { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data?.error?.message ?? i18n.errors.serverError)
+      } else {
+        setProducts((prev) =>
+          prev.map((x) => (x.id === p.id ? { ...x, imagePath: null } : x))
+        )
+        flash(t.imageRemoved)
+      }
+    } catch {
+      setError(i18n.errors.network)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   async function logout() {
     await fetch('/api/auth/logout', { method: 'POST' })
     router.push('/login')
@@ -265,6 +314,12 @@ export default function AdminCatalogPage() {
                 key={p.id}
                 className="bg-white rounded-xl border border-gray-200 p-3 flex flex-col sm:flex-row sm:items-center gap-3"
               >
+                <ImageEditor
+                  product={p}
+                  disabled={busyId === p.id}
+                  onUpload={(file) => uploadImage(p, file)}
+                  onRemove={() => removeImage(p)}
+                />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-gray-900">{p.name}</span>
@@ -416,6 +471,65 @@ function StockEditor({
         aria-label={t.stock}
         title={t.stock}
       />
+    </div>
+  )
+}
+
+function ImageEditor({
+  product,
+  disabled,
+  onUpload,
+  onRemove,
+}: {
+  product: Product
+  disabled: boolean
+  onUpload: (file: File) => void
+  onRemove: () => void
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  return (
+    <div className="flex flex-col items-center gap-1 shrink-0">
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file) onUpload(file)
+          e.target.value = ''
+        }}
+      />
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => inputRef.current?.click()}
+        className="relative h-16 w-16 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden flex items-center justify-center text-gray-400 hover:border-primary disabled:opacity-50"
+        title={product.imagePath ? t.imageChange : t.imageUpload}
+        aria-label={product.imagePath ? t.imageChange : t.imageUpload}
+      >
+        {product.imagePath ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={product.imagePath}
+            alt={product.name}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <span className="text-2xl leading-none">+</span>
+        )}
+      </button>
+      {product.imagePath && (
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={onRemove}
+          className="text-[11px] text-gray-400 hover:text-red-600 disabled:opacity-50"
+        >
+          {t.imageRemove}
+        </button>
+      )}
     </div>
   )
 }
