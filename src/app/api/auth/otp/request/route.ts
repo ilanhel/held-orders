@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { OtpService, otpStore } from '@/services/otp.service'
+import { OtpService } from '@/services/otp.service'
+import { NotificationService } from '@/services/notifications'
 import { createSession } from '@/lib/session'
 import { cookies } from 'next/headers'
 import { i18n } from '@/lib/i18n'
@@ -14,7 +15,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { phone } = requestSchema.parse(body)
 
-    const result = OtpService.requestOtp(phone)
+    const result = await OtpService.requestOtp(phone)
 
     if (!result.success) {
       const status = result.error === 'Too many requests' ? 429 : 400
@@ -29,11 +30,22 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // In production, send via WhatsApp/SMS
-    // For dev, log to console or return the code
+    // In development, log the code to the console for convenience.
     if (process.env.NODE_ENV === 'development') {
-      const code = otpStore.get(phone)?.code
-      console.log(`[DEV OTP] Phone: ${phone}, Code: ${code || 'N/A'}`)
+      console.log(`[DEV OTP] Phone: ${phone}, Code: ${result.code || 'N/A'}`)
+    }
+
+    // Deliver the code to the user (WhatsApp via the active notification
+    // driver). Skipped in demo mode below, which logs the user in directly.
+    if (process.env.DEMO_MODE !== 'true' && result.code) {
+      await NotificationService.send(
+        {
+          type: 'OTP_CODE',
+          code: result.code,
+          expiryMinutes: result.expiresInMinutes ?? OtpService.OTP_EXPIRY_MINUTES,
+        },
+        { phone }
+      )
     }
 
     // Demo mode: log the user in directly, with no OTP code step.

@@ -36,6 +36,8 @@ export const i18n = {
     backToPhone: 'חזרה',
     otpSent: 'שלחנו לך קוד בוואטסאפ',
     demoCodeLabel: 'מצב הדגמה — קוד הכניסה שלך:',
+    otpMessagePrefix: 'קוד הכניסה שלך ל-HELD:',
+    otpMessageExpiry: 'הקוד בתוקף ל-{minutes} דקות.',
     loginSuccess: 'התחברת בהצלחה',
     logoutSuccess: 'התנתקת בהצלחה',
     logout: 'התנתקות',

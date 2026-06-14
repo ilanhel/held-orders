@@ -32,5 +32,7 @@ export function renderMessage(event: NotificationEvent): string {
       return `מחיר עודכן: ${event.productName} — ${formatTotal(event.oldAgorot)} → ${formatTotal(event.newAgorot)}`
     case 'ANNOUNCEMENT':
       return `📢 ${event.title}\n${event.body}`
+    case 'OTP_CODE':
+      return `${i18n.auth.otpMessagePrefix} ${event.code}\n${i18n.auth.otpMessageExpiry.replace('{minutes}', String(event.expiryMinutes))}`
   }
 }

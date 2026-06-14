@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     const { phone, code } = verifySchema.parse(body)
 
     // Verify OTP
-    const verifyResult = OtpService.verifyOtp(phone, code)
+    const verifyResult = await OtpService.verifyOtp(phone, code)
     if (!verifyResult.success) {
       const status = verifyResult.error === 'Too many attempts' ? 429 : 401
       return NextResponse.json(

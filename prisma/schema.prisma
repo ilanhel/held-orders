@@ -204,3 +204,14 @@ model PushSubscription {
 
   @@index([userId])
 }
+
+model OtpCode {
+  phone        String     @id
+  code         String
+  expiresAt    DateTime
+  attempts     Int        @default(0)
+  lockedUntil  DateTime?
+  requestTimes DateTime[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}

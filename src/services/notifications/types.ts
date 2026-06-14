@@ -13,6 +13,7 @@ export type NotificationEvent =
   | { type: 'PRODUCT_NEW'; name: string; barcode: string; priceAgorot: number }
   | { type: 'PRICE_CHANGED'; productName: string; oldAgorot: number; newAgorot: number }
   | { type: 'ANNOUNCEMENT'; title: string; body: string }
+  | { type: 'OTP_CODE'; code: string; expiryMinutes: number }
 
 export interface NotificationRecipient {
   phone: string
