@@ -78,6 +78,25 @@ export default function AdminStoresPage() {
     }
   }
 
+  async function deleteStore(s: Store) {
+    if (!window.confirm(t.confirmDelete)) return
+    setBusyId(s.id)
+    setError(null)
+    try {
+      const res = await fetch(`/api/stores/${s.id}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok) setError(data?.error?.message ?? i18n.errors.serverError)
+      else {
+        setStores((prev) => prev.filter((x) => x.id !== s.id))
+        flash(t.deleted)
+      }
+    } catch {
+      setError(i18n.errors.network)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   async function logout() {
     await fetch('/api/auth/logout', { method: 'POST' })
     router.push('/login')
@@ -197,6 +216,13 @@ export default function AdminStoresPage() {
                     }`}
                   >
                     {s.active ? t.deactivate : t.activate}
+                  </button>
+                  <button
+                    onClick={() => deleteStore(s)}
+                    disabled={busyId === s.id}
+                    className="text-xs px-3 py-1.5 rounded-md bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50"
+                  >
+                    {busyId === s.id ? t.deleting : t.delete}
                   </button>
                 </li>
               )

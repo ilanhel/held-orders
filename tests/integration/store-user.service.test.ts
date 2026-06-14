@@ -97,6 +97,37 @@ describe('StoreService', () => {
       ).rejects.toThrow('STORE_NOT_FOUND')
     })
   })
+
+  describe('remove', () => {
+    it('deletes a branch that has no orders', async () => {
+      const s = await StoreService.create({ name: 'דמו', code: 'DEMO', phone: '0501234567' })
+      await StoreService.remove(s.id)
+      const list = await StoreService.list()
+      expect(list.find((x) => x.id === s.id)).toBeUndefined()
+    })
+
+    it('detaches users when its branch is deleted', async () => {
+      const s = await StoreService.create({ name: 'דמו', code: 'DEMO2', phone: '0501234567' })
+      const u = await prisma.user.create({
+        data: { name: 'זכיין', phone: '0508888888', role: Role.FRANCHISEE, storeId: s.id },
+      })
+      await StoreService.remove(s.id)
+      const after = await prisma.user.findUnique({ where: { id: u.id } })
+      expect(after?.storeId).toBeNull()
+    })
+
+    it('throws STORE_HAS_ORDERS when the branch has orders', async () => {
+      const s = await StoreService.create({ name: 'עם הזמנות', code: 'ORD', phone: '0501234567' })
+      await prisma.order.create({
+        data: { storeId: s.id, createdBy: 'tester' },
+      })
+      await expect(StoreService.remove(s.id)).rejects.toThrow('STORE_HAS_ORDERS')
+    })
+
+    it('throws STORE_NOT_FOUND for a missing id', async () => {
+      await expect(StoreService.remove('nope')).rejects.toThrow('STORE_NOT_FOUND')
+    })
+  })
 })
 
 describe('UserService', () => {

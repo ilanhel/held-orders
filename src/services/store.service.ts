@@ -114,4 +114,21 @@ export class StoreService {
 
   /** Expose the shared phone normalizer for the user service / callers. */
   static normalizePhone = normalizePhone
+
+  /**
+   * Permanently delete a branch. Allowed only when it has NO orders (orders
+   * are never deleted), otherwise throws 'STORE_HAS_ORDERS'. Any users tied to
+   * the branch are detached (storeId set to null) by the schema's onDelete:
+   * SetNull. Throws 'STORE_NOT_FOUND' if the branch does not exist.
+   */
+  static async remove(id: string): Promise<void> {
+    const store = await prisma.store.findUnique({
+      where: { id },
+      include: { _count: { select: { orders: true } } },
+    })
+    if (!store) throw new Error('STORE_NOT_FOUND')
+    if (store._count.orders > 0) throw new Error('STORE_HAS_ORDERS')
+
+    await prisma.store.delete({ where: { id } })
+  }
 }
