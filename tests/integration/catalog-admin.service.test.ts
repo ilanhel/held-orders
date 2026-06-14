@@ -11,6 +11,7 @@ async function resetDb() {
   await prisma.priceChange.deleteMany()
   await prisma.product.deleteMany()
   await prisma.category.deleteMany()
+  await prisma.store.deleteMany()
 }
 
 let catA: { id: string }
@@ -184,6 +185,42 @@ describe('CatalogService admin management', () => {
       await expect(CatalogService.setImage('nope', 'https://x/y.jpg')).rejects.toThrow(
         'PRODUCT_NOT_FOUND'
       )
+    })
+  })
+
+  describe('removeProduct', () => {
+    it('deletes a product that is not in any order', async () => {
+      const existing = await prisma.product.findUnique({ where: { barcode: '7290000020001' } })
+      await CatalogService.removeProduct(existing!.id)
+      const gone = await prisma.product.findUnique({ where: { id: existing!.id } })
+      expect(gone).toBeNull()
+    })
+
+    it('throws PRODUCT_IN_ORDERS when the product appears in an order', async () => {
+      const product = await prisma.product.findUnique({ where: { barcode: '7290000020001' } })
+      const store = await prisma.store.create({
+        data: { name: 'סניף', code: 'RMV', phone: '0501234567' },
+      })
+      const order = await prisma.order.create({
+        data: { storeId: store.id, createdBy: 'tester' },
+      })
+      await prisma.orderItem.create({
+        data: {
+          orderId: order.id,
+          productId: product!.id,
+          qtyOrdered: 1,
+          priceAgorot: product!.priceAgorot,
+          productName: product!.name,
+          productBarcode: product!.barcode,
+        },
+      })
+      await expect(CatalogService.removeProduct(product!.id)).rejects.toThrow(
+        'PRODUCT_IN_ORDERS'
+      )
+    })
+
+    it('throws PRODUCT_NOT_FOUND for unknown id', async () => {
+      await expect(CatalogService.removeProduct('nope')).rejects.toThrow('PRODUCT_NOT_FOUND')
     })
   })
 })

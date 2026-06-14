@@ -276,6 +276,11 @@ export const i18n = {
       markOutOfStock: 'סמן חסר',
       markActive: 'החזר למלאי',
       markHidden: 'הסתר',
+      delete: 'מחיקה',
+      deleting: 'מוחק...',
+      confirmDelete: 'למחוק את המוצר לצמיתות? לא ניתן לשחזר.',
+      deleted: 'המוצר נמחק',
+      deleteInOrders: 'לא ניתן למחוק מוצר שמופיע בהזמנות. אפשר להסתיר אותו במקום.',
       noProducts: 'לא נמצאו מוצרים',
       productCount: 'מוצרים',
       statuses: {

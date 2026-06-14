@@ -210,6 +210,26 @@ export default function AdminCatalogPage() {
     }
   }
 
+  async function deleteProduct(p: Product) {
+    if (!window.confirm(t.confirmDelete)) return
+    setBusyId(p.id)
+    setError(null)
+    try {
+      const res = await fetch(`/api/products/${p.id}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data?.error?.message ?? i18n.errors.serverError)
+      } else {
+        setProducts((prev) => prev.filter((x) => x.id !== p.id))
+        flash(t.deleted)
+      }
+    } catch {
+      setError(i18n.errors.network)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   async function logout() {
     await fetch('/api/auth/logout', { method: 'POST' })
     router.push('/login')
@@ -381,6 +401,13 @@ export default function AdminCatalogPage() {
                       {t.markHidden}
                     </button>
                   )}
+                  <button
+                    onClick={() => deleteProduct(p)}
+                    disabled={busyId === p.id}
+                    className="text-xs px-2 py-1 rounded-md bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50"
+                  >
+                    {busyId === p.id ? t.deleting : t.delete}
+                  </button>
                 </div>
               </li>
             ))}

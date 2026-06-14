@@ -415,6 +415,24 @@ export class CatalogService {
     }
   }
 
+  /**
+   * Permanently delete a product. Allowed only when it has never appeared in
+   * an order (orders/order items are never destroyed) — otherwise throws
+   * 'PRODUCT_IN_ORDERS', and the caller should HIDE the product instead. Price
+   * history is removed with the product (onDelete: Cascade). Throws
+   * 'PRODUCT_NOT_FOUND' if the product does not exist.
+   */
+  static async removeProduct(id: string): Promise<void> {
+    const product = await prisma.product.findUnique({
+      where: { id },
+      include: { _count: { select: { orderItems: true } } },
+    })
+    if (!product) throw new Error('PRODUCT_NOT_FOUND')
+    if (product._count.orderItems > 0) throw new Error('PRODUCT_IN_ORDERS')
+
+    await prisma.product.delete({ where: { id } })
+  }
+
   private static toCatalogProduct(p: {
     id: string
     name: string
@@ -423,8 +441,7 @@ export class CatalogService {
     priceAgorot: number
     imagePath: string | null
     status: ProductStatus
-  }): CatalogProduct {
-    return {
+  }): CatalogProduct {    return {
       id: p.id,
       name: p.name,
       barcode: p.barcode,

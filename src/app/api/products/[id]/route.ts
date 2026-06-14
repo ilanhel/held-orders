@@ -70,3 +70,40 @@ export async function PUT(
     )
   }
 }
+
+/**
+ * DELETE /api/products/[id] — permanently delete a product (only if it has
+ * never appeared in an order). ADMIN only.
+ */
+export async function DELETE(
+  req: NextRequest,
+  ctx: { params: Promise<{ id: string }> }
+) {
+  const { authenticated, error } = await requireSession(req, ['ADMIN'])
+  if (!authenticated || error) return authError(error)
+
+  const { id } = await ctx.params
+  try {
+    await CatalogService.removeProduct(id)
+    return NextResponse.json({ success: true })
+  } catch (err) {
+    const code = err instanceof Error ? err.message : 'SERVER_ERROR'
+    if (code === 'PRODUCT_NOT_FOUND') {
+      return NextResponse.json(
+        { error: { code, message: i18n.errors.notFound } },
+        { status: 404 }
+      )
+    }
+    if (code === 'PRODUCT_IN_ORDERS') {
+      return NextResponse.json(
+        { error: { code, message: i18n.admin.catalog.deleteInOrders } },
+        { status: 409 }
+      )
+    }
+    console.error('[api/products/[id] DELETE] error:', err)
+    return NextResponse.json(
+      { error: { code: 'SERVER_ERROR', message: i18n.errors.serverError } },
+      { status: 500 }
+    )
+  }
+}
