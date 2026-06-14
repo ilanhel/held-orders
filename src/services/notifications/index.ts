@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 import { ConsoleDriver, MockDriver } from './drivers'
 import { WhatsAppDriver } from './whatsapp'
+import { GreenApiDriver } from './green-api'
 import { PushService } from './push'
 import { renderMessage } from './render'
 import type { NotificationDriver, NotificationEvent, NotificationRecipient } from './types'
@@ -12,9 +13,10 @@ const prisma = new PrismaClient()
  * Routes through a pluggable driver, logs every attempt to NotificationLog.
  *
  * Driver selection (env NOTIFICATION_DRIVER):
- *   - "mock"     → in-memory MockDriver (tests)
- *   - "whatsapp" → WhatsApp Cloud API (requires WHATSAPP_PHONE_NUMBER_ID + WHATSAPP_BEARER_TOKEN)
- *   - default    → ConsoleDriver (dev)
+ *   - "mock"      → in-memory MockDriver (tests)
+ *   - "whatsapp"  → WhatsApp Cloud API (requires WHATSAPP_PHONE_NUMBER_ID + WHATSAPP_BEARER_TOKEN)
+ *   - "green-api" → Green API WhatsApp (requires GREEN_API_ID_INSTANCE + GREEN_API_TOKEN_INSTANCE)
+ *   - default     → ConsoleDriver (dev)
  */
 class NotificationServiceImpl {
   private driver: NotificationDriver
@@ -28,6 +30,7 @@ class NotificationServiceImpl {
     const name = (process.env.NOTIFICATION_DRIVER || '').toLowerCase()
     if (name === 'mock') return this.mock
     if (name === 'whatsapp') return new WhatsAppDriver()
+    if (name === 'green-api' || name === 'greenapi') return new GreenApiDriver()
     return new ConsoleDriver()
   }
 
