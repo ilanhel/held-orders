@@ -246,6 +246,87 @@ describe('OrderService', () => {
     })
   })
 
+  describe('reorder', () => {
+    async function submitOrderWith(items: { id: string; qty: number }[]) {
+      const d = await OrderService.getOrCreateDraft(storeId, userId)
+      for (const it of items) await OrderService.setItemQty(d.id, it.id, it.qty)
+      return OrderService.submitDraft(d.id, userId)
+    }
+
+    it('copies items from a previous order into a fresh draft', async () => {
+      const submitted = await submitOrderWith([
+        { id: prodA.id, qty: 3 },
+        { id: prodB.id, qty: 2 },
+      ])
+
+      const { draft, skipped } = await OrderService.reorder(submitted.id, storeId, userId)
+      expect(skipped).toBe(0)
+      expect(draft.status).toBe(OrderStatus.DRAFT)
+      const qtyById = Object.fromEntries(draft.items.map((i) => [i.productId, i.qtyOrdered]))
+      expect(qtyById[prodA.id]).toBe(3)
+      expect(qtyById[prodB.id]).toBe(2)
+    })
+
+    it('overwrites an existing draft line for the same product, keeps others', async () => {
+      const submitted = await submitOrderWith([{ id: prodA.id, qty: 5 }])
+      // Build a new draft with a different existing line + a conflicting one
+      const draft0 = await OrderService.getOrCreateDraft(storeId, userId)
+      await OrderService.setItemQty(draft0.id, prodA.id, 1) // will be overwritten to 5
+      await OrderService.setItemQty(draft0.id, prodB.id, 9) // should remain
+
+      const { draft } = await OrderService.reorder(submitted.id, storeId, userId)
+      const qtyById = Object.fromEntries(draft.items.map((i) => [i.productId, i.qtyOrdered]))
+      expect(qtyById[prodA.id]).toBe(5)
+      expect(qtyById[prodB.id]).toBe(9)
+    })
+
+    it('skips products that are now HIDDEN', async () => {
+      // Submit with A, then make a product hidden does not apply to A; simulate by
+      // creating a submitted order referencing the hidden product directly.
+      const d = await OrderService.getOrCreateDraft(storeId, userId)
+      await OrderService.setItemQty(d.id, prodA.id, 2)
+      const submitted = await OrderService.submitDraft(d.id, userId)
+      // Inject a line for the hidden product into the submitted order
+      await prisma.orderItem.create({
+        data: {
+          orderId: submitted.id,
+          productId: prodHidden.id,
+          qtyOrdered: 4,
+          priceAgorot: 999,
+          productName: 'מוצר נסתר',
+          productBarcode: 'TST-H',
+        },
+      })
+
+      const { draft, skipped } = await OrderService.reorder(submitted.id, storeId, userId)
+      expect(skipped).toBe(1)
+      expect(draft.items.find((i) => i.productId === prodHidden.id)).toBeUndefined()
+      expect(draft.items.find((i) => i.productId === prodA.id)?.qtyOrdered).toBe(2)
+    })
+
+    it('throws FORBIDDEN when the source order belongs to another store', async () => {
+      const submitted = await submitOrderWith([{ id: prodA.id, qty: 1 }])
+      await expect(
+        OrderService.reorder(submitted.id, storeBId, userId)
+      ).rejects.toThrow('FORBIDDEN')
+    })
+
+    it('reorderLast copies the most recent submitted order', async () => {
+      await submitOrderWith([{ id: prodA.id, qty: 1 }])
+      await submitOrderWith([{ id: prodB.id, qty: 7 }])
+
+      const { draft } = await OrderService.reorderLast(storeId, userId)
+      const qtyById = Object.fromEntries(draft.items.map((i) => [i.productId, i.qtyOrdered]))
+      expect(qtyById[prodB.id]).toBe(7)
+    })
+
+    it('reorderLast throws NO_PREVIOUS_ORDER when there is no history', async () => {
+      await expect(OrderService.reorderLast(storeId, userId)).rejects.toThrow(
+        'NO_PREVIOUS_ORDER'
+      )
+    })
+  })
+
   describe('submitDraft notification', () => {
     it('notifies warehouse staff on submit', async () => {
       const d = await OrderService.getOrCreateDraft(storeId, userId)

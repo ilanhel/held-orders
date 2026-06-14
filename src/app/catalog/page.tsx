@@ -7,6 +7,10 @@ import { formatPrice, formatTotal } from '@/lib/format'
 import { AnnouncementBanner } from '@/components/AnnouncementBanner'
 import { QtyStepper } from '@/components/QtyStepper'
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+// Exponential backoff capped at 8s: 0.5s, 1s, 2s, 4s...
+const backoffMs = (attempt: number) => Math.min(500 * 2 ** (attempt - 1), 8000)
+
 type Product = {
   id: string
   name: string
@@ -51,9 +55,11 @@ export default function CatalogPage() {
   const [savingFor, setSavingFor] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null)
+  const [reordering, setReordering] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
+  const [pendingSync, setPendingSync] = useState(false)
   const sectionRefs = useRef<Map<string, HTMLElement>>(new Map())
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
   // Initial load: catalog + draft
   useEffect(() => {
     let cancelled = false
@@ -123,23 +129,42 @@ export default function CatalogPage() {
     if (qty < 0) qty = 0
     setSavingFor(productId)
     setError(null)
-    try {
-      const res = await fetch('/api/orders/draft/items', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productId, qty }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        setError(data?.error?.message ?? i18n.errors.serverError)
-        return
+
+    const maxAttempts = 5
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const res = await fetch('/api/orders/draft/items', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ productId, qty }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          // 5xx → transient, retry; 4xx → a real error, stop.
+          if (res.status >= 500 && attempt < maxAttempts) {
+            setPendingSync(true)
+            await sleep(backoffMs(attempt))
+            continue
+          }
+          setError(data?.error?.message ?? i18n.errors.serverError)
+          setPendingSync(false)
+          break
+        }
+        setOrder(data.order)
+        setPendingSync(false)
+        break
+      } catch {
+        // Network failure (offline / dropped connection) → retry with backoff.
+        if (attempt < maxAttempts) {
+          setPendingSync(true)
+          await sleep(backoffMs(attempt))
+          continue
+        }
+        setError(i18n.errors.network)
+        setPendingSync(false)
       }
-      setOrder(data.order)
-    } catch {
-      setError(i18n.errors.network)
-    } finally {
-      setSavingFor(null)
     }
+    setSavingFor(null)
   }
 
   function scrollToCategory(id: string) {
@@ -153,6 +178,37 @@ export default function CatalogPage() {
   async function logout() {
     await fetch('/api/auth/logout', { method: 'POST' })
     router.push('/login')
+  }
+
+  async function reorderLast() {
+    setReordering(true)
+    setToast(null)
+    try {
+      const res = await fetch('/api/orders/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      const data = await res.json()
+      if (res.status === 401) {
+        router.push('/login')
+        return
+      }
+      if (!res.ok) {
+        setToast(
+          data?.error?.code === 'NO_PREVIOUS_ORDER'
+            ? i18n.orders.noPreviousOrder
+            : data?.error?.message ?? i18n.errors.serverError
+        )
+        return
+      }
+      setOrder(data.draft)
+      setToast(data.skipped > 0 ? i18n.orders.reorderSkipped : i18n.orders.reorderDone)
+    } catch {
+      setToast(i18n.errors.network)
+    } finally {
+      setReordering(false)
+    }
   }
 
   if (loading) {
@@ -184,6 +240,36 @@ export default function CatalogPage() {
           {i18n.auth.logout}
         </button>
       </header>
+
+      {/* Quick actions: my orders + regular order */}
+      <div className="bg-white border-b border-gray-200 px-4 py-2 flex items-center gap-2">
+        <button
+          onClick={() => router.push('/orders')}
+          className="text-sm font-medium text-gray-700 border border-gray-300 rounded-lg px-3 py-1.5"
+        >
+          📋 {i18n.orders.myOrders}
+        </button>
+        <button
+          onClick={reorderLast}
+          disabled={reordering}
+          className="text-sm font-medium text-primary border border-primary rounded-lg px-3 py-1.5 disabled:opacity-60"
+        >
+          🔁 {reordering ? i18n.orders.reordering : i18n.orders.regularOrder}
+        </button>
+      </div>
+
+      {toast && (
+        <div className="mx-4 mt-3 p-3 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg text-sm text-center">
+          {toast}
+        </div>
+      )}
+
+      {pendingSync && (
+        <div className="sticky top-[64px] z-20 mx-4 mt-3 p-2 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-sm text-center flex items-center justify-center gap-2">
+          <span className="inline-block w-3 h-3 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+          {i18n.common.waitingForConnection}
+        </div>
+      )}
 
       <AnnouncementBanner />
 

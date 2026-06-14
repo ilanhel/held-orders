@@ -252,6 +252,76 @@ export class OrderService {
   }
 
   /**
+   * Copy the items of a previously submitted order into the store's current
+   * DRAFT (creating one if needed). Each product's quantity in the draft is set
+   * to the source order's quantity (overwriting an existing line for the same
+   * product; other draft lines are kept). Items whose product is now HIDDEN or
+   * deleted are skipped. Returns the resulting draft plus the skipped count.
+   *
+   * Throws 'ORDER_NOT_FOUND' / 'FORBIDDEN' (source belongs to another store).
+   */
+  static async reorder(
+    sourceOrderId: string,
+    storeId: string,
+    userId: string
+  ): Promise<{ draft: OrderView; skipped: number }> {
+    const source = await prisma.order.findUnique({
+      where: { id: sourceOrderId },
+      include: { items: { orderBy: { createdAt: 'asc' } } },
+    })
+    if (!source) throw new Error('ORDER_NOT_FOUND')
+    if (source.storeId !== storeId) throw new Error('FORBIDDEN')
+
+    const draft = await this.getOrCreateDraft(storeId, userId)
+
+    const productIds = source.items.map((i) => i.productId)
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+    })
+    const productMap = new Map(products.map((p) => [p.id, p]))
+
+    let skipped = 0
+    for (const item of source.items) {
+      const product = productMap.get(item.productId)
+      if (!product || product.status === ProductStatus.HIDDEN) {
+        skipped++
+        continue
+      }
+      await prisma.orderItem.upsert({
+        where: { orderId_productId: { orderId: draft.id, productId: item.productId } },
+        update: { qtyOrdered: item.qtyOrdered },
+        create: {
+          orderId: draft.id,
+          productId: item.productId,
+          qtyOrdered: item.qtyOrdered,
+          priceAgorot: product.priceAgorot,
+          productName: product.name,
+          productBarcode: product.barcode,
+        },
+      })
+    }
+
+    return { draft: (await this.getById(draft.id))!, skipped }
+  }
+
+  /**
+   * Copy the store's most recent submitted order into its DRAFT ("my regular
+   * order" / "order again"). Throws 'NO_PREVIOUS_ORDER' if none exists.
+   */
+  static async reorderLast(
+    storeId: string,
+    userId: string
+  ): Promise<{ draft: OrderView; skipped: number }> {
+    const last = await prisma.order.findFirst({
+      where: { storeId, status: { not: OrderStatus.DRAFT } },
+      orderBy: { submittedAt: 'desc' },
+      select: { id: true },
+    })
+    if (!last) throw new Error('NO_PREVIOUS_ORDER')
+    return this.reorder(last.id, storeId, userId)
+  }
+
+  /**
    * Warehouse queue: all non-DRAFT, non-terminal orders, oldest first.
    */
   static async getWarehouseQueue(limit = 100): Promise<OrderView[]> {
