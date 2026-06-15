@@ -35,6 +35,7 @@ export interface AdminCategory {
   id: string
   name: string
   sortOrder: number
+  productCount: number
 }
 
 export class CatalogService {
@@ -121,8 +122,96 @@ export class CatalogService {
 
   /** All categories (including empty ones) ordered for management dropdowns. */
   static async listCategories(): Promise<AdminCategory[]> {
-    const cats = await prisma.category.findMany({ orderBy: { sortOrder: 'asc' } })
-    return cats.map((c) => ({ id: c.id, name: c.name, sortOrder: c.sortOrder }))
+    const cats = await prisma.category.findMany({
+      orderBy: { sortOrder: 'asc' },
+      include: { _count: { select: { products: true } } },
+    })
+    return cats.map((c) => ({
+      id: c.id,
+      name: c.name,
+      sortOrder: c.sortOrder,
+      productCount: c._count.products,
+    }))
+  }
+
+  /**
+   * Create a category. Throws 'CATEGORY_NAME_EXISTS' on a duplicate name or
+   * 'INVALID_NAME' for an empty name. When sortOrder is omitted the category
+   * is placed at the end.
+   */
+  static async createCategory(input: {
+    name: string
+    sortOrder?: number
+  }): Promise<AdminCategory> {
+    const name = input.name.trim()
+    if (!name) throw new Error('INVALID_NAME')
+
+    const existing = await prisma.category.findUnique({ where: { name } })
+    if (existing) throw new Error('CATEGORY_NAME_EXISTS')
+
+    let sortOrder = input.sortOrder
+    if (sortOrder === undefined || !Number.isInteger(sortOrder)) {
+      const last = await prisma.category.findFirst({ orderBy: { sortOrder: 'desc' } })
+      sortOrder = (last?.sortOrder ?? 0) + 10
+    }
+
+    const created = await prisma.category.create({ data: { name, sortOrder } })
+    return { id: created.id, name: created.name, sortOrder: created.sortOrder, productCount: 0 }
+  }
+
+  /**
+   * Update a category's name and/or sort order. Throws 'CATEGORY_NOT_FOUND',
+   * 'CATEGORY_NAME_EXISTS' (name taken by another category), or 'INVALID_NAME'.
+   */
+  static async updateCategory(
+    id: string,
+    input: { name?: string; sortOrder?: number }
+  ): Promise<AdminCategory> {
+    const category = await prisma.category.findUnique({ where: { id } })
+    if (!category) throw new Error('CATEGORY_NOT_FOUND')
+
+    let name: string | undefined
+    if (input.name !== undefined) {
+      name = input.name.trim()
+      if (!name) throw new Error('INVALID_NAME')
+      if (name !== category.name) {
+        const clash = await prisma.category.findUnique({ where: { name } })
+        if (clash) throw new Error('CATEGORY_NAME_EXISTS')
+      }
+    }
+
+    const updated = await prisma.category.update({
+      where: { id },
+      data: {
+        ...(name !== undefined ? { name } : {}),
+        ...(input.sortOrder !== undefined && Number.isInteger(input.sortOrder)
+          ? { sortOrder: input.sortOrder }
+          : {}),
+      },
+      include: { _count: { select: { products: true } } },
+    })
+    return {
+      id: updated.id,
+      name: updated.name,
+      sortOrder: updated.sortOrder,
+      productCount: updated._count.products,
+    }
+  }
+
+  /**
+   * Delete a category. Allowed only when it has NO products (products use
+   * onDelete: Restrict) — otherwise throws 'CATEGORY_HAS_PRODUCTS'. Throws
+   * 'CATEGORY_NOT_FOUND' if the category does not exist.
+   */
+  static async removeCategory(id: string): Promise<void> {
+    const category = await prisma.category.findUnique({
+      where: { id },
+      include: { _count: { select: { products: true } } },
+    })
+    if (!category) throw new Error('CATEGORY_NOT_FOUND')
+    if (category._count.products > 0) throw new Error('CATEGORY_HAS_PRODUCTS')
+
+    await prisma.category.delete({ where: { id } })
   }
 
   /**

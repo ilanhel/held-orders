@@ -57,6 +57,80 @@ describe('CatalogService admin management', () => {
     })
   })
 
+  describe('category management', () => {
+    it('creates a category at the end when no sortOrder given', async () => {
+      const created = await CatalogService.createCategory({ name: 'מדבקות' })
+      expect(created.name).toBe('מדבקות')
+      expect(created.productCount).toBe(0)
+      const cats = await CatalogService.listCategories()
+      expect(cats[cats.length - 1].name).toBe('מדבקות')
+    })
+
+    it('throws CATEGORY_NAME_EXISTS on a duplicate name', async () => {
+      await expect(
+        CatalogService.createCategory({ name: 'קנבסים' })
+      ).rejects.toThrow('CATEGORY_NAME_EXISTS')
+    })
+
+    it('throws INVALID_NAME for an empty name', async () => {
+      await expect(
+        CatalogService.createCategory({ name: '   ' })
+      ).rejects.toThrow('INVALID_NAME')
+    })
+
+    it('reports the product count', async () => {
+      const cats = await CatalogService.listCategories()
+      const withProduct = cats.find((c) => c.name === 'בלוקים מעץ')
+      expect(withProduct?.productCount).toBe(1)
+    })
+
+    it('updates a category name and sort order', async () => {
+      const cats = await CatalogService.listCategories()
+      const target = cats.find((c) => c.name === 'קנבסים')!
+      const updated = await CatalogService.updateCategory(target.id, {
+        name: 'קנבסים גדולים',
+        sortOrder: 5,
+      })
+      expect(updated.name).toBe('קנבסים גדולים')
+      expect(updated.sortOrder).toBe(5)
+    })
+
+    it('throws CATEGORY_NAME_EXISTS when renaming to a taken name', async () => {
+      const cats = await CatalogService.listCategories()
+      const target = cats.find((c) => c.name === 'קנבסים')!
+      await expect(
+        CatalogService.updateCategory(target.id, { name: 'בלוקים מעץ' })
+      ).rejects.toThrow('CATEGORY_NAME_EXISTS')
+    })
+
+    it('throws CATEGORY_NOT_FOUND when updating a missing category', async () => {
+      await expect(
+        CatalogService.updateCategory('nope', { name: 'x' })
+      ).rejects.toThrow('CATEGORY_NOT_FOUND')
+    })
+
+    it('deletes an empty category', async () => {
+      const created = await CatalogService.createCategory({ name: 'ריקה' })
+      await CatalogService.removeCategory(created.id)
+      const cats = await CatalogService.listCategories()
+      expect(cats.find((c) => c.id === created.id)).toBeUndefined()
+    })
+
+    it('throws CATEGORY_HAS_PRODUCTS when the category has products', async () => {
+      const cats = await CatalogService.listCategories()
+      const withProduct = cats.find((c) => c.name === 'בלוקים מעץ')!
+      await expect(
+        CatalogService.removeCategory(withProduct.id)
+      ).rejects.toThrow('CATEGORY_HAS_PRODUCTS')
+    })
+
+    it('throws CATEGORY_NOT_FOUND when deleting a missing category', async () => {
+      await expect(CatalogService.removeCategory('nope')).rejects.toThrow(
+        'CATEGORY_NOT_FOUND'
+      )
+    })
+  })
+
   describe('listForAdmin', () => {
     it('includes HIDDEN products', async () => {
       const products = await CatalogService.listForAdmin()

@@ -29,6 +29,7 @@ export default function AdminHomePage() {
 
   const tiles = [
     { label: i18n.admin.catalogMgmt, icon: '📦', href: '/admin/catalog' },
+    { label: i18n.admin.categoriesMgmt, icon: '🗂️', href: '/admin/categories' },
     { label: i18n.admin.storesMgmt, icon: '🏬', href: '/admin/stores' },
     { label: i18n.admin.usersMgmt, icon: '👥', href: '/admin/users' },
     { label: i18n.admin.ordersMgmt, icon: '📋', href: '/warehouse' },
