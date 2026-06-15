@@ -13,6 +13,7 @@ describe('StorageService driver selection', () => {
     process.env = { ...originalEnv }
     delete process.env.STORAGE_DRIVER
     delete process.env.BLOB_READ_WRITE_TOKEN
+    delete process.env.BLOB_STORE_ID
   })
 
   afterEach(() => {
@@ -34,6 +35,12 @@ describe('StorageService driver selection', () => {
 
   it('auto-detects vercel-blob when a token is present', () => {
     process.env.BLOB_READ_WRITE_TOKEN = 'vercel_blob_rw_test'
+    StorageService.reloadFromEnv()
+    expect(StorageService.driverName()).toBe('vercel-blob')
+  })
+
+  it('auto-detects vercel-blob via OIDC when only BLOB_STORE_ID is present', () => {
+    process.env.BLOB_STORE_ID = 'store_test'
     StorageService.reloadFromEnv()
     expect(StorageService.driverName()).toBe('vercel-blob')
   })
@@ -63,12 +70,13 @@ describe('VercelBlobDriver', () => {
   beforeEach(() => {
     process.env = { ...originalEnv }
     delete process.env.BLOB_READ_WRITE_TOKEN
+    delete process.env.BLOB_STORE_ID
   })
   afterEach(() => {
     process.env = originalEnv
   })
 
-  it('throws BLOB_NOT_CONFIGURED without a token', async () => {
+  it('throws BLOB_NOT_CONFIGURED without a token or store id', async () => {
     const driver = new VercelBlobDriver()
     await expect(
       driver.upload({

@@ -15,8 +15,10 @@ function resolveDriver(): StorageDriver {
   if (name === 'local') return new LocalStorageDriver()
   if (name === 'vercel-blob' || name === 'vercelblob') return new VercelBlobDriver()
 
-  // Auto-detect: prefer Vercel Blob when a token is present (i.e. production).
-  if (process.env.BLOB_READ_WRITE_TOKEN) return new VercelBlobDriver()
+  // Auto-detect: prefer Vercel Blob when a static token OR an OIDC-connected
+  // store (BLOB_STORE_ID) is present (i.e. production).
+  if (process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID)
+    return new VercelBlobDriver()
   return new LocalStorageDriver()
 }
 
