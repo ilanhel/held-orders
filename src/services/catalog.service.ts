@@ -305,13 +305,13 @@ export class CatalogService {
   }
 
   /**
-   * Update a product's name, category and/or status. Throws
-   * 'PRODUCT_NOT_FOUND' / 'CATEGORY_NOT_FOUND'. Does not change price
-   * (use setPrice, which records history).
+   * Update a product's name, barcode, category and/or status. Throws
+   * 'PRODUCT_NOT_FOUND' / 'CATEGORY_NOT_FOUND' / 'BARCODE_EXISTS'. Does not
+   * change price (use setPrice, which records history).
    */
   static async updateProduct(
     id: string,
-    input: { name?: string; categoryId?: string; status?: ProductStatus }
+    input: { name?: string; barcode?: string; categoryId?: string; status?: ProductStatus }
   ): Promise<AdminProduct> {
     const product = await prisma.product.findUnique({ where: { id } })
     if (!product) throw new Error('PRODUCT_NOT_FOUND')
@@ -324,10 +324,24 @@ export class CatalogService {
       if (!category) throw new Error('CATEGORY_NOT_FOUND')
     }
 
+    let barcode: string | undefined
+    if (input.barcode !== undefined) {
+      barcode = input.barcode.trim()
+      if (!barcode) throw new Error('INVALID_BARCODE')
+      if (barcode !== product.barcode) {
+        const taken = await prisma.product.findUnique({
+          where: { barcode },
+          select: { id: true },
+        })
+        if (taken) throw new Error('BARCODE_EXISTS')
+      }
+    }
+
     const updated = await prisma.product.update({
       where: { id },
       data: {
         ...(input.name !== undefined ? { name: input.name.trim() } : {}),
+        ...(barcode !== undefined ? { barcode } : {}),
         ...(input.categoryId !== undefined ? { categoryId: input.categoryId } : {}),
         ...(input.status !== undefined ? { status: input.status } : {}),
       },

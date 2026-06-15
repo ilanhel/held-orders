@@ -211,6 +211,38 @@ describe('CatalogService admin management', () => {
         CatalogService.updateProduct('nope', { status: ProductStatus.HIDDEN })
       ).rejects.toThrow('PRODUCT_NOT_FOUND')
     })
+
+    it('updates the barcode', async () => {
+      const existing = await prisma.product.findUnique({ where: { barcode: '7290000020001' } })
+      const updated = await CatalogService.updateProduct(existing!.id, {
+        barcode: '7290000099999',
+      })
+      expect(updated.barcode).toBe('7290000099999')
+    })
+
+    it('throws BARCODE_EXISTS when the barcode belongs to another product', async () => {
+      const existing = await prisma.product.findUnique({ where: { barcode: '7290000020001' } })
+      await expect(
+        CatalogService.updateProduct(existing!.id, { barcode: '7290000020099' })
+      ).rejects.toThrow('BARCODE_EXISTS')
+    })
+
+    it('allows keeping the same barcode unchanged', async () => {
+      const existing = await prisma.product.findUnique({ where: { barcode: '7290000020001' } })
+      const updated = await CatalogService.updateProduct(existing!.id, {
+        name: 'שם חדש',
+        barcode: '7290000020001',
+      })
+      expect(updated.name).toBe('שם חדש')
+      expect(updated.barcode).toBe('7290000020001')
+    })
+
+    it('throws INVALID_BARCODE for an empty barcode', async () => {
+      const existing = await prisma.product.findUnique({ where: { barcode: '7290000020001' } })
+      await expect(
+        CatalogService.updateProduct(existing!.id, { barcode: '   ' })
+      ).rejects.toThrow('INVALID_BARCODE')
+    })
   })
 
   describe('setPrice', () => {

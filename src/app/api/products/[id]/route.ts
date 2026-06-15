@@ -7,6 +7,7 @@ import { i18n } from '@/lib/i18n'
 
 const updateSchema = z.object({
   name: z.string().min(1).max(200).optional(),
+  barcode: z.string().min(1).max(64).optional(),
   categoryId: z.string().min(1).optional(),
   status: z.nativeEnum(ProductStatus).optional(),
 })
@@ -61,6 +62,12 @@ export async function PUT(
       return NextResponse.json(
         { error: { code, message: i18n.errors.categoryNotFound } },
         { status: 400 }
+      )
+    }
+    if (code === 'BARCODE_EXISTS') {
+      return NextResponse.json(
+        { error: { code, message: i18n.errors.barcodeExists } },
+        { status: 409 }
       )
     }
     console.error('[api/products/[id] PUT] error:', err)

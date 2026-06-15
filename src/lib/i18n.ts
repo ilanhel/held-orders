@@ -271,6 +271,7 @@ export const i18n = {
       newProduct: 'מוצר חדש',
       addProduct: 'הוספת מוצר',
       editProduct: 'עריכת מוצר',
+      edit: 'עריכה',
       name: 'שם המוצר',
       barcode: 'ברקוד',
       category: 'קטגוריה',

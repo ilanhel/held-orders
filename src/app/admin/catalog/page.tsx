@@ -41,6 +41,7 @@ export default function AdminCatalogPage() {
   const [message, setMessage] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -210,6 +211,47 @@ export default function AdminCatalogPage() {
     }
   }
 
+  async function saveDetails(
+    p: Product,
+    input: { name: string; barcode: string; categoryId: string }
+  ): Promise<boolean> {
+    setBusyId(p.id)
+    setError(null)
+    try {
+      const res = await fetch(`/api/products/${p.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data?.error?.message ?? i18n.errors.serverError)
+        return false
+      }
+      const updated = data.product as Product
+      setProducts((prev) =>
+        prev.map((x) =>
+          x.id === p.id
+            ? {
+                ...x,
+                name: updated.name,
+                barcode: updated.barcode,
+                categoryId: updated.categoryId,
+                categoryName: updated.categoryName,
+              }
+            : x
+        )
+      )
+      flash(t.updated)
+      return true
+    } catch {
+      setError(i18n.errors.network)
+      return false
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   async function deleteProduct(p: Product) {
     if (!window.confirm(t.confirmDelete)) return
     setBusyId(p.id)
@@ -333,84 +375,109 @@ export default function AdminCatalogPage() {
           <p className="text-gray-500 py-12 text-center">{t.noProducts}</p>
         ) : (
           <ul className="space-y-2">
-            {products.map((p) => (
-              <li
-                key={p.id}
-                className="bg-white rounded-xl border border-gray-200 p-3 flex flex-col sm:flex-row sm:items-center gap-3"
-              >
-                <ImageEditor
-                  product={p}
-                  disabled={busyId === p.id}
-                  onUpload={(file) => uploadImage(p, file)}
-                  onRemove={() => removeImage(p)}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-gray-900">{p.name}</span>
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLOR[p.status]}`}
-                    >
-                      {t.statuses[p.status]}
-                    </span>
-                  </div>
-                  <div className="text-xs text-gray-500 mt-0.5">
-                    {p.categoryName} · {p.barcode}
-                  </div>
-                </div>
-
-                {/* Inline price edit */}
-                <PriceEditor
-                  product={p}
-                  disabled={busyId === p.id}
-                  onSave={(v) => savePrice(p, v)}
-                />
-
-                {/* Inline stock edit */}
-                <StockEditor
-                  product={p}
-                  disabled={busyId === p.id}
-                  onSave={(qty, track) => saveStock(p, qty, track)}
-                />
-
-                {/* Status quick actions */}
-                <div className="flex gap-1">
-                  {p.status !== 'ACTIVE' && (
-                    <button
-                      onClick={() => changeStatus(p, 'ACTIVE')}
-                      disabled={busyId === p.id}
-                      className="text-xs px-2 py-1 rounded-md bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50"
-                    >
-                      {t.markActive}
-                    </button>
-                  )}
-                  {p.status !== 'OUT_OF_STOCK' && (
-                    <button
-                      onClick={() => changeStatus(p, 'OUT_OF_STOCK')}
-                      disabled={busyId === p.id}
-                      className="text-xs px-2 py-1 rounded-md bg-orange-50 text-orange-700 hover:bg-orange-100 disabled:opacity-50"
-                    >
-                      {t.markOutOfStock}
-                    </button>
-                  )}
-                  {p.status !== 'HIDDEN' && (
-                    <button
-                      onClick={() => changeStatus(p, 'HIDDEN')}
-                      disabled={busyId === p.id}
-                      className="text-xs px-2 py-1 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50"
-                    >
-                      {t.markHidden}
-                    </button>
-                  )}
-                  <button
-                    onClick={() => deleteProduct(p)}
+            {products.map((p) =>
+              editingId === p.id ? (
+                <li key={p.id}>
+                  <EditProductForm
+                    product={p}
+                    categories={categories}
                     disabled={busyId === p.id}
-                    className="text-xs px-2 py-1 rounded-md bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50"
-                  >
-                    {busyId === p.id ? t.deleting : t.delete}
-                  </button>
-                </div>
-              </li>
-            ))}
+                    onCancel={() => setEditingId(null)}
+                    onSave={async (input) => {
+                      const ok = await saveDetails(p, input)
+                      if (ok) setEditingId(null)
+                    }}
+                  />
+                </li>
+              ) : (
+                <li
+                  key={p.id}
+                  className="bg-white rounded-xl border border-gray-200 p-3 flex flex-col sm:flex-row sm:items-center gap-3"
+                >
+                  <ImageEditor
+                    product={p}
+                    disabled={busyId === p.id}
+                    onUpload={(file) => uploadImage(p, file)}
+                    onRemove={() => removeImage(p)}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-gray-900">{p.name}</span>
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLOR[p.status]}`}
+                      >
+                        {t.statuses[p.status]}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-0.5">
+                      {p.categoryName} · {p.barcode}
+                    </div>
+                  </div>
+
+                  {/* Inline price edit */}
+                  <PriceEditor
+                    product={p}
+                    disabled={busyId === p.id}
+                    onSave={(v) => savePrice(p, v)}
+                  />
+
+                  {/* Inline stock edit */}
+                  <StockEditor
+                    product={p}
+                    disabled={busyId === p.id}
+                    onSave={(qty, track) => saveStock(p, qty, track)}
+                  />
+
+                  {/* Status quick actions */}
+                  <div className="flex gap-1 flex-wrap">
+                    <button
+                      onClick={() => {
+                        setError(null)
+                        setEditingId(p.id)
+                      }}
+                      disabled={busyId === p.id}
+                      className="text-xs px-2 py-1 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+                    >
+                      {t.edit}
+                    </button>
+                    {p.status !== 'ACTIVE' && (
+                      <button
+                        onClick={() => changeStatus(p, 'ACTIVE')}
+                        disabled={busyId === p.id}
+                        className="text-xs px-2 py-1 rounded-md bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50"
+                      >
+                        {t.markActive}
+                      </button>
+                    )}
+                    {p.status !== 'OUT_OF_STOCK' && (
+                      <button
+                        onClick={() => changeStatus(p, 'OUT_OF_STOCK')}
+                        disabled={busyId === p.id}
+                        className="text-xs px-2 py-1 rounded-md bg-orange-50 text-orange-700 hover:bg-orange-100 disabled:opacity-50"
+                      >
+                        {t.markOutOfStock}
+                      </button>
+                    )}
+                    {p.status !== 'HIDDEN' && (
+                      <button
+                        onClick={() => changeStatus(p, 'HIDDEN')}
+                        disabled={busyId === p.id}
+                        className="text-xs px-2 py-1 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50"
+                      >
+                        {t.markHidden}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => deleteProduct(p)}
+                      disabled={busyId === p.id}
+                      className="text-xs px-2 py-1 rounded-md bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50"
+                    >
+                      {busyId === p.id ? t.deleting : t.delete}
+                    </button>
+                  </div>
+                </li>
+              )
+            )}
           </ul>
         )}
       </section>
@@ -721,6 +788,88 @@ function NewProductForm({
         <button
           onClick={onCancel}
           className="rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100"
+        >
+          {t.cancel}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function EditProductForm({
+  product,
+  categories,
+  disabled,
+  onCancel,
+  onSave,
+}: {
+  product: Product
+  categories: Category[]
+  disabled: boolean
+  onCancel: () => void
+  onSave: (input: { name: string; barcode: string; categoryId: string }) => void
+}) {
+  const [name, setName] = useState(product.name)
+  const [barcode, setBarcode] = useState(product.barcode)
+  const [categoryId, setCategoryId] = useState(product.categoryId)
+
+  const valid = name.trim() && barcode.trim() && categoryId
+
+  function submit() {
+    if (!valid || disabled) return
+    onSave({ name: name.trim(), barcode: barcode.trim(), categoryId })
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-blue-200 ring-1 ring-blue-100 p-4">
+      <h3 className="font-semibold text-gray-800 mb-3">{t.editProduct}</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <label className="block">
+          <span className="text-xs text-gray-500">{t.name}</span>
+          <input
+            value={name}
+            disabled={disabled}
+            onChange={(e) => setName(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none disabled:opacity-50"
+          />
+        </label>
+        <label className="block">
+          <span className="text-xs text-gray-500">{t.barcode}</span>
+          <input
+            value={barcode}
+            disabled={disabled}
+            onChange={(e) => setBarcode(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-left focus:border-primary focus:outline-none disabled:opacity-50"
+          />
+        </label>
+        <label className="block">
+          <span className="text-xs text-gray-500">{t.category}</span>
+          <select
+            value={categoryId}
+            disabled={disabled}
+            onChange={(e) => setCategoryId(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white disabled:opacity-50"
+          >
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div className="flex gap-2 mt-4">
+        <button
+          onClick={submit}
+          disabled={!valid || disabled}
+          className="bg-primary text-white rounded-lg px-4 py-2 text-sm font-semibold hover:opacity-90 disabled:opacity-50"
+        >
+          {disabled ? t.saving : t.save}
+        </button>
+        <button
+          onClick={onCancel}
+          disabled={disabled}
+          className="rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50"
         >
           {t.cancel}
         </button>
