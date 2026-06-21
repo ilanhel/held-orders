@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { i18n } from '@/lib/i18n'
-import { formatPrice, formatTotal } from '@/lib/format'
 import { AnnouncementBanner } from '@/components/AnnouncementBanner'
 import { QtyStepper } from '@/components/QtyStepper'
 import { PushOptIn } from '@/components/PushOptIn'
@@ -371,7 +370,6 @@ export default function CatalogPage() {
         <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 px-4 py-3 flex items-center justify-between gap-3 shadow-lg pb-safe">
           <div className="text-sm text-gray-700">
             <div className="font-semibold">{totalQty} {i18n.orders.items}</div>
-            <div className="text-gray-500">{formatTotal(order.totalAgorot)}</div>
           </div>
           <button
             onClick={() => router.push('/cart')}
@@ -420,11 +418,8 @@ function ProductCard({
       <div className="text-base font-semibold text-gray-900 leading-tight mb-1 line-clamp-2 min-h-[2.5rem]">
         {product.name}
       </div>
-      <div className="text-xs text-gray-400 font-mono mb-1 truncate" dir="ltr">
+      <div className="text-xs text-gray-400 font-mono mb-2 truncate" dir="ltr">
         {product.barcode}
-      </div>
-      <div className="text-base font-bold text-primary mb-2 whitespace-nowrap">
-        {formatPrice(product.priceAgorot)}
       </div>
       <QtyStepper qty={qty} onChange={onChange} saving={saving} disabled={isOOS} />
     </div>

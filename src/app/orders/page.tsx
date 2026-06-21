@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { i18n, type OrderStatusKey } from '@/lib/i18n'
-import { formatTotal } from '@/lib/format'
 
 type OrderRow = {
   id: string
@@ -150,9 +149,6 @@ export default function MyOrdersPage() {
                 <div className="flex items-center justify-between text-sm mb-3">
                   <span className="text-gray-500">
                     {o.items.length} {i18n.orders.items}
-                  </span>
-                  <span className="font-semibold text-primary">
-                    {formatTotal(o.totalAgorot)}
                   </span>
                 </div>
                 <div className="flex gap-2">

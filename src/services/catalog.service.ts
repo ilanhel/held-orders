@@ -3,9 +3,6 @@ import { NotificationService } from './notifications'
 
 const prisma = new PrismaClient()
 
-/** A product created within this window does not trigger a price-change alert. */
-const NEW_PRODUCT_GRACE_MS = 24 * 60 * 60 * 1000
-
 export interface CatalogProduct {
   id: string
   name: string
@@ -358,10 +355,9 @@ export class CatalogService {
   }
 
   /**
-   * Change a product's price. Records a PriceChange row. Notifies active
-   * franchisees of the new price UNLESS the product was created within the
-   * last 24h (a brand-new product already announced its price). Throws
-   * 'PRODUCT_NOT_FOUND'. A no-op (same price) is ignored.
+   * Change a product's price. Records a PriceChange row for admin/warehouse
+   * history. Franchisees are not notified (prices are hidden from them).
+   * Throws 'PRODUCT_NOT_FOUND'. A no-op (same price) is ignored.
    */
   static async setPrice(
     id: string,
@@ -395,23 +391,6 @@ export class CatalogService {
         data: { productId: id, oldAgorot, newAgorot, changedBy },
       }),
     ])
-
-    const isNew = Date.now() - product.createdAt.getTime() < NEW_PRODUCT_GRACE_MS
-    if (!isNew && product.status !== ProductStatus.HIDDEN) {
-      const recipients = await prisma.user.findMany({
-        where: { role: 'FRANCHISEE', active: true },
-        select: { phone: true, name: true },
-      })
-      await NotificationService.broadcast(
-        {
-          type: 'PRICE_CHANGED',
-          productName: updated.name,
-          oldAgorot,
-          newAgorot,
-        },
-        recipients.map((u) => ({ phone: u.phone, name: u.name }))
-      )
-    }
 
     return {
       ...this.toCatalogProduct(updated),

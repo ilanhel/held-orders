@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { i18n } from '@/lib/i18n'
-import { formatPrice, formatTotal } from '@/lib/format'
 import { QtyStepper } from '@/components/QtyStepper'
 
 type OrderItem = {
@@ -156,12 +155,6 @@ export default function CartPage() {
                   <div className="text-xs text-gray-400 font-mono mt-0.5" dir="ltr">
                     {item.productBarcode}
                   </div>
-                  <div className="text-sm text-gray-600 mt-1">
-                    {formatPrice(item.priceAgorot)} × {item.qtyOrdered} ={' '}
-                    <span className="font-semibold text-primary">
-                      {formatTotal(item.priceAgorot * item.qtyOrdered)}
-                    </span>
-                  </div>
                 </div>
                 <div className="flex flex-col items-center justify-center gap-1">
                   <QtyStepper
@@ -183,12 +176,6 @@ export default function CartPage() {
           </ul>
 
           <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-4 shadow-lg pb-safe">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-gray-700">{i18n.orders.total}</span>
-              <span className="text-2xl font-bold text-primary">
-                {formatTotal(order!.totalAgorot)}
-              </span>
-            </div>
             <button
               onClick={submit}
               disabled={submitting}

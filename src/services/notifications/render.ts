@@ -27,7 +27,7 @@ export function renderMessage(event: NotificationEvent): string {
       return `בהזמנה #${event.orderNumber} יש חוסרים:\n${lines.join('\n')}`
     }
     case 'PRODUCT_NEW':
-      return `מוצר חדש בקטלוג: ${event.name} (${event.barcode}) — ${formatTotal(event.priceAgorot)}`
+      return `מוצר חדש בקטלוג: ${event.name} (${event.barcode})`
     case 'PRICE_CHANGED':
       return `מחיר עודכן: ${event.productName} — ${formatTotal(event.oldAgorot)} → ${formatTotal(event.newAgorot)}`
     case 'ANNOUNCEMENT':

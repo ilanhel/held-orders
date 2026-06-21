@@ -3,7 +3,6 @@
 import { useEffect, useState, use } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { i18n, type OrderStatusKey } from '@/lib/i18n'
-import { formatPrice, formatTotal } from '@/lib/format'
 
 type OrderItem = {
   id: string
@@ -134,27 +133,17 @@ export default function OrderDetailPage({
               </div>
               <div className="flex items-center justify-between mt-2 text-sm">
                 <span className="text-gray-600">
-                  {formatPrice(item.priceAgorot)} × {item.qtyOrdered}
+                  {i18n.orders.qty}: {item.qtyOrdered}
                   {item.qtySupplied !== null && item.qtySupplied !== item.qtyOrdered && (
                     <span className="text-orange-600 mr-2">
                       ({i18n.orders.qtySupplied}: {item.qtySupplied})
                     </span>
                   )}
                 </span>
-                <span className="font-semibold text-primary">
-                  {formatTotal(item.priceAgorot * item.qtyOrdered)}
-                </span>
               </div>
             </li>
           ))}
         </ul>
-
-        <div className="mt-6 bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between">
-          <span className="text-gray-700 font-semibold">{i18n.orders.total}</span>
-          <span className="text-2xl font-bold text-primary">
-            {formatTotal(order.totalAgorot)}
-          </span>
-        </div>
       </section>
     </main>
   )
