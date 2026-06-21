@@ -94,8 +94,18 @@ export default function AdminCategoriesPage() {
 
       <section className="px-4 py-5 max-w-3xl mx-auto">
         {error && (
-          <div className="mb-3 rounded-lg bg-red-50 text-red-700 px-3 py-2 text-sm">
-            {error}
+          <div className="mb-3 rounded-lg bg-red-50 text-red-700 px-3 py-2 text-sm flex items-center justify-between gap-3">
+            <span>{error}</span>
+            <button
+              onClick={() => {
+                setError(null)
+                setLoading(true)
+                void load()
+              }}
+              className="shrink-0 rounded-md bg-red-100 px-3 py-1 text-xs font-semibold text-red-700 hover:bg-red-200"
+            >
+              {i18n.common.retry}
+            </button>
           </div>
         )}
         {message && (
@@ -131,7 +141,9 @@ export default function AdminCategoriesPage() {
         {loading ? (
           <p className="text-gray-500 py-8 text-center">{i18n.common.loading}</p>
         ) : categories.length === 0 ? (
-          <p className="text-gray-500 py-12 text-center">{t.noCategories}</p>
+          error ? null : (
+            <p className="text-gray-500 py-12 text-center">{t.noCategories}</p>
+          )
         ) : (
           <ul className="space-y-2">
             {categories.map((c) =>

@@ -347,8 +347,18 @@ export default function AdminCatalogPage() {
           </div>
         )}
         {error && (
-          <div className="mb-3 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-            {error}
+          <div className="mb-3 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm flex items-center justify-between gap-3">
+            <span>{error}</span>
+            <button
+              onClick={() => {
+                setError(null)
+                setLoading(true)
+                void load()
+              }}
+              className="shrink-0 rounded-md bg-red-100 px-3 py-1 text-xs font-semibold text-red-700 hover:bg-red-200"
+            >
+              {i18n.common.retry}
+            </button>
           </div>
         )}
 
