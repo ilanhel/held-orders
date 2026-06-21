@@ -3,7 +3,7 @@
  * Data integrity rule (CLAUDE.md): drafts and orders live on the server;
  * the SW must never serve stale data. So we bypass everything dynamic.
  */
-const CACHE = 'held-static-v1'
+const CACHE = 'held-static-v2'
 
 // Match hashed build assets and static files we are safe to cache.
 function isStaticAsset(url) {
