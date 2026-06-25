@@ -231,7 +231,7 @@ export class CatalogService {
       },
       include: { category: { select: { name: true, sortOrder: true } } },
       orderBy: [{ category: { sortOrder: 'asc' } }, { name: 'asc' }],
-      take: 500,
+      take: 5000,
     })
     return products.map((p) => ({
       ...this.toCatalogProduct(p),
