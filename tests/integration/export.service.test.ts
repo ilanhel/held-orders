@@ -85,26 +85,31 @@ describe('OrderExportService', () => {
     expect(ws).toBeDefined()
     expect(ws.views[0].rightToLeft).toBe(true)
 
-    // Title row
-    expect(String(ws.getCell('A1').value)).toContain(`#${s.number}`)
+    // Accounting column order in header row 1
+    expect(ws.getCell('A1').value).toBe('ש.')
+    expect(ws.getCell('B1').value).toBe('קוד')
+    expect(ws.getCell('C1').value).toBe('שם פריט')
+    expect(ws.getCell('F1').value).toBe('כמות')
+    expect(ws.getCell('G1').value).toBe('מחיר')
+    expect(ws.getCell('I1').value).toBe('סכום')
 
-    // Headers in row 5
-    expect(ws.getCell('A5').value).toBe('קטגוריה')
-    expect(ws.getCell('D5').value).toBe('כמות שהוזמנה')
-    expect(ws.getCell('E5').value).toBe('כמות סופקה')
+    // Two data rows starting at row 2, sorted by category sortOrder (catA=10 first)
+    expect(ws.getCell('C2').value).toBe('מוצר אקס')
+    expect(ws.getCell('C3').value).toBe('מוצר בית')
 
-    // Two data rows starting at row 6
-    const productNames: string[] = []
-    for (let r = 6; r <= 7; r++) {
-      productNames.push(String(ws.getCell(`B${r}`).value))
-    }
-    expect(productNames).toContain('מוצר אקס')
-    expect(productNames).toContain('מוצר בית')
+    // Quantity column reflects the SUPPLIED amount (prodB shorted 3 -> 1)
+    expect(ws.getCell('F2').value).toBe(2)
+    expect(ws.getCell('F3').value).toBe(1)
+    // Line totals: 2*45.00 = 90.00, 1*77.00 = 77.00
+    expect(ws.getCell('I2').value).toBeCloseTo(90.0, 2)
+    expect(ws.getCell('I3').value).toBeCloseTo(77.0, 2)
 
-    // Totals at end (row 9 since 2 items + blank separator)
-    const totalRow = ws.getRow(9)
-    expect(String(totalRow.getCell(2).value)).toBe('סה״כ')
-    // 2*45.00 + 3*77.00 = 321.00
-    expect(totalRow.getCell(6).value).toBeCloseTo(321.0, 2)
+    // Totals block below a blank separator row (rows 5..7).
+    expect(String(ws.getCell('H5').value)).toBe('סה״כ')
+    expect(ws.getCell('I5').value).toBeCloseTo(167.0, 2) // 90 + 77 (supplied-based)
+    expect(String(ws.getCell('H6').value)).toBe('מע״מ 18%')
+    expect(ws.getCell('I6').value).toBeCloseTo(30.06, 2)
+    expect(String(ws.getCell('H7').value)).toBe('סה״כ כולל מע״מ')
+    expect(ws.getCell('I7').value).toBeCloseTo(197.06, 2)
   })
 })
