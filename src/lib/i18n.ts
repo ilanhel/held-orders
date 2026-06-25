@@ -308,6 +308,9 @@ export const i18n = {
       deleteInOrders: 'לא ניתן למחוק מוצר שמופיע בהזמנות. אפשר להסתיר אותו במקום.',
       noProducts: 'לא נמצאו מוצרים',
       productCount: 'מוצרים',
+      pagePrev: 'הקודם',
+      pageNext: 'הבא',
+      pageInfo: 'עמוד {page} מתוך {pages}',
       statuses: {
         ACTIVE: 'פעיל',
         OUT_OF_STOCK: 'חסר זמנית',

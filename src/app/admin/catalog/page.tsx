@@ -29,6 +29,8 @@ const STATUS_COLOR: Record<ProductStatus, string> = {
 
 const t = i18n.admin.catalog
 
+const PAGE_SIZE = 60
+
 export default function AdminCatalogPage() {
   const router = useRouter()
   const [products, setProducts] = useState<Product[]>([])
@@ -42,6 +44,7 @@ export default function AdminCatalogPage() {
   const [showForm, setShowForm] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
 
   const load = useCallback(async () => {
     try {
@@ -73,6 +76,15 @@ export default function AdminCatalogPage() {
     const id = setTimeout(() => void load(), 250)
     return () => clearTimeout(id)
   }, [load])
+
+  // Reset to the first page whenever the filters change.
+  useEffect(() => {
+    setPage(1)
+  }, [search, categoryFilter, statusFilter])
+
+  const pageCount = Math.max(1, Math.ceil(products.length / PAGE_SIZE))
+  const safePage = Math.min(page, pageCount)
+  const visibleProducts = products.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
 
   function flash(msg: string) {
     setMessage(msg)
@@ -384,8 +396,9 @@ export default function AdminCatalogPage() {
         ) : products.length === 0 ? (
           <p className="text-gray-500 py-12 text-center">{t.noProducts}</p>
         ) : (
+          <>
           <ul className="space-y-2">
-            {products.map((p) =>
+            {visibleProducts.map((p) =>
               editingId === p.id ? (
                 <li key={p.id}>
                   <EditProductForm
@@ -489,6 +502,30 @@ export default function AdminCatalogPage() {
               )
             )}
           </ul>
+          {pageCount > 1 && (
+            <div className="flex items-center justify-center gap-3 mt-4">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={safePage <= 1}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium disabled:opacity-40"
+              >
+                {t.pagePrev}
+              </button>
+              <span className="text-sm text-gray-600">
+                {t.pageInfo
+                  .replace('{page}', String(safePage))
+                  .replace('{pages}', String(pageCount))}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                disabled={safePage >= pageCount}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium disabled:opacity-40"
+              >
+                {t.pageNext}
+              </button>
+            </div>
+          )}
+          </>
         )}
       </section>
     </main>
