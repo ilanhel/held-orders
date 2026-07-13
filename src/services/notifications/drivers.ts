@@ -1,5 +1,5 @@
 import { renderMessage } from './render'
-import type { NotificationDriver, NotificationEvent, NotificationRecipient } from './types'
+import type { NotificationDriver, NotificationEvent, NotificationFile, NotificationRecipient } from './types'
 
 /**
  * Console driver: logs every notification to stdout. Used in development.
@@ -14,6 +14,13 @@ export class ConsoleDriver implements NotificationDriver {
     )
     return { success: true }
   }
+
+  async sendFile(file: NotificationFile, recipient: NotificationRecipient) {
+    console.log(
+      `[Notify/${this.name}] → ${recipient.phone} [file: ${file.filename}, ${file.buffer.length} bytes]${file.caption ? ` — ${file.caption}` : ''}\n`
+    )
+    return { success: true }
+  }
 }
 
 /**
@@ -22,13 +29,20 @@ export class ConsoleDriver implements NotificationDriver {
 export class MockDriver implements NotificationDriver {
   readonly name = 'mock'
   readonly sent: Array<{ event: NotificationEvent; recipient: NotificationRecipient; body: string }> = []
+  readonly sentFiles: Array<{ file: NotificationFile; recipient: NotificationRecipient }> = []
 
   async send(event: NotificationEvent, recipient: NotificationRecipient) {
     this.sent.push({ event, recipient, body: renderMessage(event) })
     return { success: true }
   }
 
+  async sendFile(file: NotificationFile, recipient: NotificationRecipient) {
+    this.sentFiles.push({ file, recipient })
+    return { success: true }
+  }
+
   clear() {
     this.sent.length = 0
+    this.sentFiles.length = 0
   }
 }

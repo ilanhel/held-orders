@@ -148,41 +148,25 @@ export class OrderExportService {
     ws.getColumn(9).width = 14 // סכום
 
     // ---------------------------------------------------------------------------
-    // Second sheet: a clean ERP-ingestion block with exactly three columns
-    //   A=ברקוד  B=כמות  C=מחיר
-    // The picker works off the first sheet (which keeps product names); the
-    // bookkeeper selects A:C here and pastes it straight into the ERP invoice
-    // import — no product name needed there.
+    // Second sheet: raw ERP invoice-ingestion block — exactly two columns and
+    // nothing else (no header row, no line numbers, no price, no styling):
+    //   A=ברקוד  B=כמות
+    // Quantities reflect what was actually supplied (after shortage updates),
+    // so the block can be pasted into the ERP as-is.
     // ---------------------------------------------------------------------------
     const erp = wb.addWorksheet('קליטה ל-ERP', {
-      views: [{ rightToLeft: true, state: 'frozen', ySplit: 1 }],
+      views: [{ rightToLeft: true }],
     })
-    const erpHeaders = ['ברקוד', 'כמות', 'מחיר']
-    const erpHeaderRow = erp.getRow(1)
-    erpHeaders.forEach((h, i) => {
-      const cell = erpHeaderRow.getCell(i + 1)
-      cell.value = h
-      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }
-      cell.alignment = { horizontal: 'center', vertical: 'middle' }
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF111827' } }
-    })
-    erpHeaderRow.height = 22
-
-    let erpRowIdx = 2
+    let erpRowIdx = 1
     items.forEach((item) => {
       const qty = item.qtySupplied ?? item.qtyOrdered
       const r = erp.getRow(erpRowIdx)
       r.getCell(1).value = item.productBarcode // ברקוד
       r.getCell(2).value = qty // כמות
-      r.getCell(3).value = item.priceAgorot / 100 // מחיר (per unit, net)
-      r.getCell(2).alignment = { horizontal: 'center' }
-      r.getCell(3).numFmt = '#,##0.00'
-      r.getCell(3).alignment = { horizontal: 'center' }
       erpRowIdx++
     })
     erp.getColumn(1).width = 18 // ברקוד
     erp.getColumn(2).width = 10 // כמות
-    erp.getColumn(3).width = 12 // מחיר
 
     const buffer = (await wb.xlsx.writeBuffer()) as unknown as Buffer
     const numberPart = order.number ? String(order.number) : 'draft'

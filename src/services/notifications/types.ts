@@ -14,13 +14,23 @@ export type NotificationEvent =
   | { type: 'PRICE_CHANGED'; productName: string; oldAgorot: number; newAgorot: number }
   | { type: 'ANNOUNCEMENT'; title: string; body: string }
   | { type: 'OTP_CODE'; code: string; expiryMinutes: number }
+  | { type: 'ORDER_ERP_INTAKE'; orderNumber: number; storeName: string; lines: Array<{ barcode: string; qty: number }> }
 
 export interface NotificationRecipient {
   phone: string
   name?: string
 }
 
+/** A file attachment (e.g. XLSX) to deliver alongside/instead of a text message. */
+export interface NotificationFile {
+  filename: string
+  buffer: Buffer
+  caption?: string
+}
+
 export interface NotificationDriver {
   readonly name: string
   send(event: NotificationEvent, recipient: NotificationRecipient): Promise<{ success: boolean; error?: string }>
+  /** Optional: deliver a file. Drivers without file support omit this. */
+  sendFile?(file: NotificationFile, recipient: NotificationRecipient): Promise<{ success: boolean; error?: string }>
 }

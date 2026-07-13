@@ -34,5 +34,11 @@ export function renderMessage(event: NotificationEvent): string {
       return `📢 ${event.title}\n${event.body}`
     case 'OTP_CODE':
       return `${i18n.auth.otpMessagePrefix} ${event.code}\n${i18n.auth.otpMessageExpiry.replace('{minutes}', String(event.expiryMinutes))}`
+    case 'ORDER_ERP_INTAKE': {
+      // Tab-separated barcode/qty lines — pasteable straight into Excel/ERP
+      // when the driver cannot deliver the XLSX file itself.
+      const lines = event.lines.map((l) => `${l.barcode}\t${l.qty}`)
+      return `קליטה ל-ERP — הזמנה #${event.orderNumber} (${event.storeName}):\n${lines.join('\n')}`
+    }
   }
 }

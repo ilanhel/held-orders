@@ -172,6 +172,12 @@ export const i18n = {
       noShortages: 'אין חוסרים בהזמנה זו',
       shortagesSent: 'הודעת חוסרים נשלחה',
       downloadXlsx: 'הורדת רשימת ליקוט (Excel)',
+      finishAndSend: 'סיום ליקוט — שליחה בוואטסאפ',
+      confirmFinish: 'לשלוח עדכון לזכיין וקובץ קליטה ל-ERP?',
+      erpSent: 'קובץ הקליטה נשלח למחשב ה-ERP',
+      shortagesSentTo: 'הודעת חוסרים נשלחה לזכיין',
+      shortagesLabel: 'חוסרים',
+      erpNotConfigured: 'לא הוגדר מספר וואטסאפ לקליטת ERP במערכת',
     },
   },
   admin: {

@@ -1,6 +1,7 @@
 import { PrismaClient, OrderStatus, ProductStatus, Role } from '@prisma/client'
 import { NotificationService } from './notifications'
 import { CatalogService } from './catalog.service'
+import { OrderExportService } from './export.service'
 import type { NotificationEvent, NotificationRecipient } from './notifications/types'
 
 const prisma = new PrismaClient()
@@ -490,6 +491,50 @@ export class OrderService {
       recipients
     )
     return { shortageCount: shortages.length }
+  }
+
+  /**
+   * Send the ERP-intake data (barcode + supplied qty) to the preconfigured
+   * ERP WhatsApp number (env ERP_INTAKE_PHONE) — as an XLSX file when the
+   * driver supports it, otherwise as pasteable text lines.
+   */
+  static async sendErpIntake(orderId: string): Promise<{ sent: boolean }> {
+    const order = await this.getById(orderId)
+    if (!order) throw new Error('ORDER_NOT_FOUND')
+    if (order.number === null) throw new Error('ORDER_NOT_SUBMITTED')
+
+    const phone = process.env.ERP_INTAKE_PHONE
+    if (!phone) throw new Error('ERP_PHONE_NOT_CONFIGURED')
+
+    const lines = order.items.map((i) => ({
+      barcode: i.productBarcode,
+      qty: i.qtySupplied ?? i.qtyOrdered,
+    }))
+
+    const { buffer, filename } = await OrderExportService.buildOrderXlsx(orderId)
+
+    await NotificationService.sendWithFile(
+      { type: 'ORDER_ERP_INTAKE', orderNumber: order.number, storeName: order.storeName, lines },
+      { phone, name: 'ERP' },
+      {
+        filename,
+        buffer,
+        caption: `קליטה ל-ERP — הזמנה #${order.number} (${order.storeName})`,
+      }
+    )
+    return { sent: true }
+  }
+
+  /**
+   * One-tap end of picking: notify the franchisee about shortages (if any)
+   * and send the ERP-intake file to the preconfigured ERP number.
+   */
+  static async finishPicking(
+    orderId: string
+  ): Promise<{ shortageCount: number; erpSent: boolean }> {
+    const { shortageCount } = await this.notifyShortages(orderId)
+    const { sent } = await this.sendErpIntake(orderId)
+    return { shortageCount, erpSent: sent }
   }
 
   private static async storeRecipients(storeId: string): Promise<NotificationRecipient[]> {

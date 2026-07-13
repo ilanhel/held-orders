@@ -1,5 +1,5 @@
 import { renderMessage } from './render'
-import type { NotificationDriver, NotificationEvent, NotificationRecipient } from './types'
+import type { NotificationDriver, NotificationEvent, NotificationFile, NotificationRecipient } from './types'
 
 /**
  * Green API WhatsApp driver (https://green-api.com).
@@ -82,6 +82,51 @@ export class GreenApiDriver implements NotificationDriver {
         }
       }
 
+      return { success: true }
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : String(err),
+      }
+    }
+  }
+
+  /**
+   * Deliver a file (e.g. the picking XLSX) via Green API sendFileByUpload.
+   * Sent as multipart/form-data; caption appears with the file in WhatsApp.
+   */
+  async sendFile(file: NotificationFile, recipient: NotificationRecipient) {
+    if (!this.idInstance || !this.apiToken) {
+      return { success: false, error: 'GREEN_API_NOT_CONFIGURED' }
+    }
+
+    const chatId = GreenApiDriver.toChatId(recipient.phone)
+    const url = `${this.apiUrl}/waInstance${this.idInstance}/sendFileByUpload/${this.apiToken}`
+
+    const form = new FormData()
+    form.append('chatId', chatId)
+    form.append('fileName', file.filename)
+    if (file.caption) form.append('caption', file.caption)
+    form.append(
+      'file',
+      new Blob([new Uint8Array(file.buffer)], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      }),
+      file.filename
+    )
+
+    try {
+      const res = await fetch(url, { method: 'POST', body: form })
+      if (!res.ok) {
+        let detail = ''
+        try {
+          const data = await res.json()
+          detail = data?.error || JSON.stringify(data)
+        } catch {
+          detail = await res.text().catch(() => '')
+        }
+        return { success: false, error: `HTTP ${res.status}: ${detail.slice(0, 200)}` }
+      }
       return { success: true }
     } catch (err) {
       return {

@@ -112,17 +112,16 @@ describe('OrderExportService', () => {
     expect(String(ws.getCell('H7').value)).toBe('סה״כ כולל מע״מ')
     expect(ws.getCell('I7').value).toBeCloseTo(197.06, 2)
 
-    // ERP-ingestion sheet: exactly ברקוד / כמות / מחיר, supplied qty
+    // ERP-ingestion sheet: raw data only — A=ברקוד, B=כמות (supplied), no
+    // header row, no line numbers, no price.
     const erp = wb.getWorksheet('קליטה ל-ERP')!
     expect(erp).toBeDefined()
-    expect(erp.getCell('A1').value).toBe('ברקוד')
-    expect(erp.getCell('B1').value).toBe('כמות')
-    expect(erp.getCell('C1').value).toBe('מחיר')
-    expect(erp.getCell('A2').value).toBe('EXP-A')
-    expect(erp.getCell('B2').value).toBe(2)
-    expect(erp.getCell('C2').value).toBeCloseTo(45.0, 2)
-    expect(erp.getCell('A3').value).toBe('EXP-B')
-    expect(erp.getCell('B3').value).toBe(1) // supplied (shortage)
-    expect(erp.getCell('C3').value).toBeCloseTo(77.0, 2)
+    expect(erp.getCell('A1').value).toBe('EXP-A')
+    expect(erp.getCell('B1').value).toBe(2)
+    expect(erp.getCell('A2').value).toBe('EXP-B')
+    expect(erp.getCell('B2').value).toBe(1) // supplied (shortage)
+    expect(erp.getCell('C1').value).toBeNull()
+    expect(erp.getCell('C2').value).toBeNull()
+    expect(erp.getCell('A3').value).toBeNull()
   })
 })

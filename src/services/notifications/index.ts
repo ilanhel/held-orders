@@ -4,7 +4,7 @@ import { WhatsAppDriver } from './whatsapp'
 import { GreenApiDriver } from './green-api'
 import { PushService } from './push'
 import { renderMessage } from './render'
-import type { NotificationDriver, NotificationEvent, NotificationRecipient } from './types'
+import type { NotificationDriver, NotificationEvent, NotificationFile, NotificationRecipient } from './types'
 
 const prisma = new PrismaClient()
 
@@ -97,6 +97,57 @@ class NotificationServiceImpl {
   /** Fan out the same event to multiple recipients. */
   async broadcast(event: NotificationEvent, recipients: NotificationRecipient[]): Promise<void> {
     await Promise.all(recipients.map((r) => this.send(event, r)))
+  }
+
+  /**
+   * Deliver an event together with a file attachment (e.g. the ERP XLSX).
+   * If the active driver supports files, the file is sent with the rendered
+   * message as its caption; otherwise falls back to a plain text message
+   * (the rendered body carries the same data). Logged like any notification.
+   */
+  async sendWithFile(
+    event: NotificationEvent,
+    recipient: NotificationRecipient,
+    file: NotificationFile
+  ): Promise<void> {
+    if (!this.driver.sendFile) {
+      await this.send(event, recipient)
+      return
+    }
+
+    const caption = file.caption ?? renderMessage(event)
+    let success = false
+    let error: string | undefined
+    const maxAttempts = 3
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const result = await this.driver.sendFile({ ...file, caption }, recipient)
+        success = result.success
+        error = result.error
+      } catch (e) {
+        success = false
+        error = e instanceof Error ? e.message : String(e)
+      }
+      if (success) break
+      if (error?.includes('NOT_CONFIGURED')) break
+      if (attempt < maxAttempts) {
+        await new Promise((r) => setTimeout(r, 700 * attempt))
+      }
+    }
+
+    try {
+      await prisma.notificationLog.create({
+        data: {
+          event: event.type,
+          channel: this.driver.name,
+          toPhone: recipient.phone,
+          payload: JSON.stringify({ event, file: file.filename, error }),
+          success,
+        },
+      })
+    } catch (e) {
+      console.error('[NotificationService] failed to log:', e)
+    }
   }
 }
 

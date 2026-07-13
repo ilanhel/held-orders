@@ -121,19 +121,25 @@ export default function WarehouseOrderPage({
     await transitionTo('CANCELLED')
   }
 
-  async function notifyShortages() {
+  async function finishAndSend() {
+    if (!confirm(i18n.warehouse.pick.confirmFinish)) return
     setBusy(true)
     setError(null)
     setInfo(null)
     try {
-      const res = await fetch(`/api/orders/${id}/notify-shortages`, { method: 'POST' })
+      const res = await fetch(`/api/orders/${id}/finish-picking`, { method: 'POST' })
       const data = await res.json()
       if (!res.ok) {
         setError(data?.error?.message ?? i18n.errors.serverError)
-      } else if (data.shortageCount === 0) {
-        setInfo(i18n.warehouse.pick.noShortages)
       } else {
-        setInfo(i18n.warehouse.pick.shortagesSent)
+        const parts: string[] = []
+        parts.push(
+          data.shortageCount > 0
+            ? `${i18n.warehouse.pick.shortagesSentTo} (${data.shortageCount})`
+            : i18n.warehouse.pick.noShortages
+        )
+        if (data.erpSent) parts.push(i18n.warehouse.pick.erpSent)
+        setInfo(parts.join(' · '))
       }
     } catch {
       setError(i18n.errors.network)
@@ -216,21 +222,14 @@ export default function WarehouseOrderPage({
 
         {isPickable && (
           <button
-            onClick={notifyShortages}
+            onClick={finishAndSend}
             disabled={busy}
-            className="w-full bg-orange-100 text-orange-800 font-semibold py-2.5 rounded-lg disabled:opacity-50"
+            className="w-full bg-green-600 text-white font-semibold py-3 rounded-lg disabled:opacity-50 active:bg-green-700"
           >
-            {i18n.warehouse.actions.notifyShortages}
-            {totalShortages > 0 ? ` (${totalShortages})` : ''}
+            📲 {i18n.warehouse.pick.finishAndSend}
+            {totalShortages > 0 ? ` · ${totalShortages} ${i18n.warehouse.pick.shortagesLabel}` : ''}
           </button>
         )}
-
-        <a
-          href={`/api/export/order/${id}`}
-          className="block w-full text-center bg-gray-100 text-gray-700 font-medium py-2.5 rounded-lg"
-        >
-          ⬇ {i18n.warehouse.pick.downloadXlsx}
-        </a>
 
         {nextAction && (
           <button

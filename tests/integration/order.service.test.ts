@@ -497,4 +497,68 @@ describe('OrderService', () => {
       expect(notifications.sent).toHaveLength(0)
     })
   })
+
+  describe('finishPicking', () => {
+    it('sends shortage message to franchisee and ERP file to ERP_INTAKE_PHONE', async () => {
+      process.env.ERP_INTAKE_PHONE = '0559999999'
+      const d = await OrderService.getOrCreateDraft(storeId, userId)
+      await OrderService.setItemQty(d.id, prodA.id, 5)
+      await OrderService.setItemQty(d.id, prodB.id, 3)
+      const s = await OrderService.submitDraft(d.id, userId)
+      await OrderService.transitionStatus(s.id, OrderStatus.RECEIVED, warehouseUserId)
+      await OrderService.updateItemSupply(s.id, s.items[0].id, 5, true) // full
+      await OrderService.updateItemSupply(s.id, s.items[1].id, 1, true) // short
+      notifications.clear()
+
+      const result = await OrderService.finishPicking(s.id)
+      expect(result.shortageCount).toBe(1)
+      expect(result.erpSent).toBe(true)
+
+      // Franchisee got the shortage text
+      expect(notifications.sent).toHaveLength(1)
+      expect(notifications.sent[0].event.type).toBe('ORDER_SHORTAGES')
+      expect(notifications.sent[0].recipient.phone).toBe('0551111111')
+
+      // ERP number got the XLSX file
+      expect(notifications.sentFiles).toHaveLength(1)
+      expect(notifications.sentFiles[0].recipient.phone).toBe('0559999999')
+      expect(notifications.sentFiles[0].file.filename).toBe(`order-${s.number}.xlsx`)
+      expect(notifications.sentFiles[0].file.buffer.length).toBeGreaterThan(1000)
+    })
+
+    it('throws when ERP_INTAKE_PHONE is not configured', async () => {
+      delete process.env.ERP_INTAKE_PHONE
+      const d = await OrderService.getOrCreateDraft(storeId, userId)
+      await OrderService.setItemQty(d.id, prodA.id, 1)
+      const s = await OrderService.submitDraft(d.id, userId)
+      await OrderService.transitionStatus(s.id, OrderStatus.RECEIVED, warehouseUserId)
+
+      await expect(OrderService.finishPicking(s.id)).rejects.toThrow(
+        'ERP_PHONE_NOT_CONFIGURED'
+      )
+    })
+
+    it('falls back to text lines when the driver has no file support', async () => {
+      process.env.ERP_INTAKE_PHONE = '0559999999'
+      // Driver without sendFile
+      NotificationService.setDriver({
+        name: 'text-only',
+        send: async (event, recipient) => {
+          notifications.sent.push({ event, recipient, body: '' })
+          return { success: true }
+        },
+      })
+      const d = await OrderService.getOrCreateDraft(storeId, userId)
+      await OrderService.setItemQty(d.id, prodA.id, 2)
+      const s = await OrderService.submitDraft(d.id, userId)
+      await OrderService.transitionStatus(s.id, OrderStatus.RECEIVED, warehouseUserId)
+      notifications.clear()
+
+      const result = await OrderService.sendErpIntake(s.id)
+      expect(result.sent).toBe(true)
+      expect(notifications.sent).toHaveLength(1)
+      expect(notifications.sent[0].event.type).toBe('ORDER_ERP_INTAKE')
+      expect(notifications.sent[0].recipient.phone).toBe('0559999999')
+    })
+  })
 })

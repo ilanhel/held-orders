@@ -29,6 +29,7 @@ npm run db:seed             # נתוני דמו (אופציונלי — בפרו
 | `NOTIFICATION_DRIVER` | `whatsapp` |
 | `WHATSAPP_PHONE_NUMBER_ID` | מ-Meta Business |
 | `WHATSAPP_BEARER_TOKEN` | טוקן קבוע / מתחדש |
+| `ERP_INTAKE_PHONE` | מספר הוואטסאפ של מחשב הקליטה ל-ERP (לשליחת קובץ הליקוט) |
 | `NODE_ENV` | `production` |
 
 `E2E_FIXED_OTP` — לא להגדיר בפרודקשן (גם אם יוגדר, הוא מתעלם כש-`NODE_ENV=production`).
