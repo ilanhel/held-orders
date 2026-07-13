@@ -38,8 +38,11 @@ export class GreenApiDriver implements NotificationDriver {
   /**
    * Normalize an Israeli mobile number (05XXXXXXXX) to a Green API chatId
    * (9725XXXXXXXX@c.us). Already-international numbers are passed through.
+   * Values that already contain '@' (e.g. group ids like 1203…@g.us) are
+   * passed through untouched — this allows targeting a WhatsApp group.
    */
   static toChatId(phone: string): string {
+    if (phone.includes('@')) return phone.trim()
     const digits = phone.replace(/\D/g, '')
     let intl: string
     if (digits.startsWith('972')) intl = digits

@@ -16,6 +16,13 @@ describe('GreenApiDriver', () => {
       expect(GreenApiDriver.toChatId('972501234567')).toBe('972501234567@c.us')
       expect(GreenApiDriver.toChatId('+972501234567')).toBe('972501234567@c.us')
     })
+
+    it('passes through group chat ids untouched', () => {
+      expect(GreenApiDriver.toChatId('120363043968066561@g.us')).toBe(
+        '120363043968066561@g.us'
+      )
+      expect(GreenApiDriver.toChatId('972501234567@c.us')).toBe('972501234567@c.us')
+    })
   })
 
   describe('send', () => {
