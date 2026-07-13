@@ -456,10 +456,23 @@ describe('OrderService', () => {
       ).rejects.toThrow('INVALID_QTY')
     })
 
-    it('rejects update when order is SUBMITTED (not yet RECEIVED)', async () => {
+    it('allows update while order is still SUBMITTED', async () => {
       const d = await OrderService.getOrCreateDraft(storeId, userId)
       await OrderService.setItemQty(d.id, prodA.id, 2)
       const s = await OrderService.submitDraft(d.id, userId)
+
+      const updated = await OrderService.updateItemSupply(s.id, s.items[0].id, 1, true)
+      expect(updated.items[0].qtySupplied).toBe(1)
+    })
+
+    it('rejects update when order is SHIPPED', async () => {
+      const d = await OrderService.getOrCreateDraft(storeId, userId)
+      await OrderService.setItemQty(d.id, prodA.id, 2)
+      const s = await OrderService.submitDraft(d.id, userId)
+      await OrderService.transitionStatus(s.id, OrderStatus.RECEIVED, warehouseUserId)
+      await OrderService.transitionStatus(s.id, OrderStatus.PICKING, warehouseUserId)
+      await OrderService.transitionStatus(s.id, OrderStatus.READY, warehouseUserId)
+      await OrderService.transitionStatus(s.id, OrderStatus.SHIPPED, warehouseUserId)
 
       await expect(
         OrderService.updateItemSupply(s.id, s.items[0].id, 1, true)

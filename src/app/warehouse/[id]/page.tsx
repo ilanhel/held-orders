@@ -68,7 +68,10 @@ export default function WarehouseOrderPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
-  const isPickable = order?.status === 'RECEIVED' || order?.status === 'PICKING'
+  const isPickable =
+    order?.status === 'SUBMITTED' ||
+    order?.status === 'RECEIVED' ||
+    order?.status === 'PICKING'
 
   const totalShortages = useMemo(() => {
     if (!order) return 0
@@ -275,14 +278,14 @@ function PickRow({
     >
       <div className="flex items-start gap-3">
         <button
-          onClick={() => onUpdate(item.qtyOrdered, !item.picked)}
+          onClick={() => onUpdate(supplied, !item.picked)}
           disabled={disabled}
           className={`mt-1 w-7 h-7 rounded-md border-2 flex-shrink-0 flex items-center justify-center ${
             item.picked
               ? 'bg-green-500 border-green-500 text-white'
               : 'bg-white border-gray-300'
           } disabled:opacity-50`}
-          aria-label="סמן כמלוקט"
+          aria-label={i18n.warehouse.pick.markPicked}
         >
           {item.picked && '✓'}
         </button>
@@ -299,36 +302,49 @@ function PickRow({
         </div>
       </div>
 
-      {item.picked && (
-        <div className="mt-3 pt-3 border-t border-gray-100">
-          <label className="block text-xs text-gray-600 mb-1">
-            {i18n.warehouse.pick.qtySupplied}
-          </label>
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              min={0}
-              max={item.qtyOrdered}
-              value={supplied}
-              onChange={(e) => {
-                const n = Math.max(
-                  0,
-                  Math.min(item.qtyOrdered, parseInt(e.target.value || '0', 10))
-                )
-                onUpdate(n, true)
-              }}
-              disabled={disabled}
-              className="w-20 px-2 py-1 border border-gray-300 rounded text-center text-lg font-semibold"
-            />
-            <span className="text-sm text-gray-500">/ {item.qtyOrdered}</span>
-            {isPartial && (
-              <span className="text-xs text-orange-600 font-medium mr-auto">
-                {i18n.warehouse.pick.partialOrMissing}
-              </span>
-            )}
-          </div>
+      <div className="mt-3 pt-3 border-t border-gray-100">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-600">{i18n.warehouse.pick.qtySupplied}</span>
+          <button
+            onClick={() => onUpdate(Math.max(0, supplied - 1), true)}
+            disabled={disabled || supplied <= 0}
+            className="w-9 h-9 rounded-lg border border-gray-300 text-xl font-bold text-gray-700 disabled:opacity-40"
+            aria-label="−"
+          >
+            −
+          </button>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={item.qtyOrdered}
+            value={supplied}
+            onChange={(e) => {
+              const n = Math.max(
+                0,
+                Math.min(item.qtyOrdered, parseInt(e.target.value || '0', 10))
+              )
+              onUpdate(n, true)
+            }}
+            disabled={disabled}
+            className="w-16 h-9 px-1 border border-gray-300 rounded-lg text-center text-lg font-semibold"
+          />
+          <button
+            onClick={() => onUpdate(Math.min(item.qtyOrdered, supplied + 1), true)}
+            disabled={disabled || supplied >= item.qtyOrdered}
+            className="w-9 h-9 rounded-lg border border-gray-300 text-xl font-bold text-gray-700 disabled:opacity-40"
+            aria-label="+"
+          >
+            +
+          </button>
+          <span className="text-sm text-gray-500">/ {item.qtyOrdered}</span>
+          {isPartial && (
+            <span className="text-xs text-orange-600 font-medium mr-auto">
+              {i18n.warehouse.pick.partialOrMissing}
+            </span>
+          )}
         </div>
-      )}
+      </div>
     </li>
   )
 }

@@ -434,7 +434,8 @@ export class OrderService {
 
   /**
    * Set qtySupplied + picked flag for a single line during picking.
-   * Allowed only in RECEIVED or PICKING states. qtySupplied must be 0..qtyOrdered.
+   * Allowed from SUBMITTED (warehouse may start adjusting immediately) through
+   * RECEIVED and PICKING. qtySupplied must be 0..qtyOrdered.
    */
   static async updateItemSupply(
     orderId: string,
@@ -445,6 +446,7 @@ export class OrderService {
     const order = await prisma.order.findUnique({ where: { id: orderId } })
     if (!order) throw new Error('ORDER_NOT_FOUND')
     if (
+      order.status !== OrderStatus.SUBMITTED &&
       order.status !== OrderStatus.RECEIVED &&
       order.status !== OrderStatus.PICKING
     ) {
