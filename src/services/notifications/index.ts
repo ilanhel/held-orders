@@ -47,17 +47,28 @@ class NotificationServiceImpl {
   /**
    * Send a notification to a recipient and persist a NotificationLog entry.
    * Errors from the driver are swallowed — the log captures success/failure.
+   * Transient failures are retried up to 2 more times with a short backoff
+   * (WhatsApp gateway hiccups otherwise silently drop the message).
    */
   async send(event: NotificationEvent, recipient: NotificationRecipient): Promise<void> {
     let success = false
     let error: string | undefined
-    try {
-      const result = await this.driver.send(event, recipient)
-      success = result.success
-      error = result.error
-    } catch (e) {
-      success = false
-      error = e instanceof Error ? e.message : String(e)
+    const maxAttempts = 3
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const result = await this.driver.send(event, recipient)
+        success = result.success
+        error = result.error
+      } catch (e) {
+        success = false
+        error = e instanceof Error ? e.message : String(e)
+      }
+      if (success) break
+      // Don't retry configuration errors — they won't fix themselves.
+      if (error?.includes('NOT_CONFIGURED')) break
+      if (attempt < maxAttempts) {
+        await new Promise((r) => setTimeout(r, 700 * attempt))
+      }
     }
 
     try {
