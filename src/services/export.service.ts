@@ -189,7 +189,9 @@ export class OrderExportService {
     if (!order) throw new Error('ORDER_NOT_FOUND')
 
     const wb = new ExcelJS.Workbook()
-    const ws = wb.addWorksheet('Sheet1')
+    // Force LTR so column A (barcode) is visually first even on Hebrew Excel,
+    // matching the ERP invoice-intake layout: barcode first, quantity second.
+    const ws = wb.addWorksheet('Sheet1', { views: [{ rightToLeft: false }] })
 
     let rowIdx = 1
     for (const item of order.items) {
