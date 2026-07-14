@@ -173,4 +173,39 @@ export class OrderExportService {
     const filename = `order-${numberPart}.xlsx`
     return { buffer, filename }
   }
+
+  /**
+   * Build the ERP-intake XLSX sent to the warehouse computer via WhatsApp:
+   * a single sheet with EXACTLY two columns and nothing else —
+   *   A=barcode  B=quantity (supplied after shortage updates, else ordered).
+   * No header row, no numbering, no prices, no totals, no extra sheets.
+   * Lines with 0 supplied are omitted (an invoice line of 0 is meaningless).
+   */
+  static async buildErpXlsx(orderId: string): Promise<{ buffer: Buffer; filename: string }> {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: { orderBy: [{ productName: 'asc' }] } },
+    })
+    if (!order) throw new Error('ORDER_NOT_FOUND')
+
+    const wb = new ExcelJS.Workbook()
+    const ws = wb.addWorksheet('Sheet1')
+
+    let rowIdx = 1
+    for (const item of order.items) {
+      const qty = item.qtySupplied ?? item.qtyOrdered
+      if (qty <= 0) continue
+      const r = ws.getRow(rowIdx)
+      r.getCell(1).value = item.productBarcode
+      r.getCell(2).value = qty
+      rowIdx++
+    }
+    ws.getColumn(1).width = 18
+    ws.getColumn(2).width = 10
+
+    const buffer = (await wb.xlsx.writeBuffer()) as unknown as Buffer
+    const numberPart = order.number ? String(order.number) : 'draft'
+    const filename = `erp-${numberPart}.xlsx`
+    return { buffer, filename }
+  }
 }

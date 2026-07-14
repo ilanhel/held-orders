@@ -513,7 +513,7 @@ export class OrderService {
       qty: i.qtySupplied ?? i.qtyOrdered,
     }))
 
-    const { buffer, filename } = await OrderExportService.buildOrderXlsx(orderId)
+    const { buffer, filename } = await OrderExportService.buildErpXlsx(orderId)
 
     await NotificationService.sendWithFile(
       { type: 'ORDER_ERP_INTAKE', orderNumber: order.number, storeName: order.storeName, lines },

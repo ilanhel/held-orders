@@ -535,7 +535,7 @@ describe('OrderService', () => {
       // ERP number got the XLSX file
       expect(notifications.sentFiles).toHaveLength(1)
       expect(notifications.sentFiles[0].recipient.phone).toBe('0559999999')
-      expect(notifications.sentFiles[0].file.filename).toBe(`order-${s.number}.xlsx`)
+      expect(notifications.sentFiles[0].file.filename).toBe(`erp-${s.number}.xlsx`)
       expect(notifications.sentFiles[0].file.buffer.length).toBeGreaterThan(1000)
     })
 

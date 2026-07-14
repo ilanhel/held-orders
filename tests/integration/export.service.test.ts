@@ -124,4 +124,27 @@ describe('OrderExportService', () => {
     expect(erp.getCell('C2').value).toBeNull()
     expect(erp.getCell('A3').value).toBeNull()
   })
+
+  it('buildErpXlsx: single sheet, barcode+qty only, zero-qty lines omitted', async () => {
+    const d = await OrderService.getOrCreateDraft(storeId, userId)
+    await OrderService.setItemQty(d.id, prodA.id, 4)
+    await OrderService.setItemQty(d.id, prodB.id, 2)
+    const s = await OrderService.submitDraft(d.id, userId)
+    await OrderService.transitionStatus(s.id, OrderStatus.RECEIVED, warehouseUserId)
+    await OrderService.updateItemSupply(s.id, s.items[0].id, 3, true) // shortage 4→3
+    await OrderService.updateItemSupply(s.id, s.items[1].id, 0, true) // nothing supplied
+
+    const { buffer, filename } = await OrderExportService.buildErpXlsx(s.id)
+    expect(filename).toBe(`erp-${s.number}.xlsx`)
+
+    const wb = new ExcelJS.Workbook()
+    await wb.xlsx.load(buffer as unknown as ArrayBuffer)
+    expect(wb.worksheets).toHaveLength(1)
+    const ws = wb.worksheets[0]
+    // Only the supplied line, starting at row 1, two columns, nothing else.
+    expect(ws.getCell('A1').value).toBe('EXP-A')
+    expect(ws.getCell('B1').value).toBe(3)
+    expect(ws.getCell('C1').value).toBeNull()
+    expect(ws.getCell('A2').value).toBeNull() // zero-qty line omitted
+  })
 })
