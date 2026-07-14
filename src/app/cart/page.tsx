@@ -112,7 +112,7 @@ export default function CartPage() {
   const isEmpty = !order || order.items.length === 0
 
   return (
-    <main className="min-h-screen bg-gray-50 pb-32">
+    <main className="min-h-screen bg-gray-50">
       <header className="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
         <button
           onClick={() => router.push('/catalog')}
@@ -175,7 +175,7 @@ export default function CartPage() {
             ))}
           </ul>
 
-          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-4 shadow-lg pb-safe">
+          <div className="sticky bottom-0 z-40 bg-white border-t border-gray-200 px-4 py-4 shadow-lg pb-safe">
             <button
               onClick={submit}
               disabled={submitting}

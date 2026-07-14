@@ -38,6 +38,11 @@ textarea {
   direction: inherit;
 }
 
+/* Bottom padding that respects the device safe area (home-bar). */
+.pb-safe {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom)) !important;
+}
+
 /* Smooth transitions */
 @media (prefers-reduced-motion: no-preference) {
   html {

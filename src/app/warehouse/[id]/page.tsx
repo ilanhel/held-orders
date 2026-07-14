@@ -171,7 +171,7 @@ export default function WarehouseOrderPage({
   // Group items by category — for picking ergonomics we just list them, since
   // catalog already grouped products; warehouse view is order-line oriented.
   return (
-    <main className="min-h-screen bg-gray-50 pb-40">
+    <main className="min-h-screen bg-gray-50">
       <header className="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
         <button onClick={() => router.push('/warehouse')} className="text-gray-500 text-sm">
           → {i18n.common.back}
@@ -217,7 +217,7 @@ export default function WarehouseOrderPage({
         </ul>
       </section>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 space-y-2 pb-safe shadow-lg">
+      <div className="sticky bottom-0 z-40 bg-white border-t border-gray-200 px-4 py-3 space-y-2 pb-safe shadow-lg">
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-600">{i18n.orders.total}</span>
           <span className="font-bold text-primary">{formatTotal(order.totalAgorot)}</span>
