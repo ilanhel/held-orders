@@ -415,13 +415,15 @@ function ProductCard({
           </span>
         )}
       </div>
-      <div className="text-base font-semibold text-gray-900 leading-tight mb-1 line-clamp-2 min-h-[2.5rem]">
+      <div className="text-sm font-semibold text-gray-900 leading-snug mb-1 min-h-[2.5rem] break-words">
         {product.name}
       </div>
       <div className="text-xs text-gray-400 font-mono mb-2 truncate" dir="ltr">
         {product.barcode}
       </div>
-      <QtyStepper qty={qty} onChange={onChange} saving={saving} disabled={isOOS} />
+      <div className="mt-auto">
+        <QtyStepper qty={qty} onChange={onChange} saving={saving} disabled={isOOS} />
+      </div>
     </div>
   )
 }

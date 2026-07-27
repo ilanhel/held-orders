@@ -333,7 +333,7 @@ export default function ScanPage() {
                     className="bg-gray-800 rounded-xl p-3 flex items-center gap-3"
                   >
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold truncate">{m.product.name}</div>
+                      <div className="font-semibold break-words">{m.product.name}</div>
                       <div className="text-xs text-gray-400" dir="ltr">
                         {m.product.barcode} · {formatPrice(m.product.priceAgorot)}
                       </div>
