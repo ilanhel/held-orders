@@ -1,0 +1,44 @@
+[
+  {
+    "id": "cmqtb6k5q002qwvmwpu8abvxi",
+    "name": "סוללת לתיום CR2430 5 באריזה",
+    "barcode": "490000002430",
+    "from": "שונות",
+    "to": "סוללות"
+  },
+  {
+    "id": "cmqtbk535018cwvmwaj7zat69",
+    "name": "ENEGIZER AA8",
+    "barcode": "8888021200256",
+    "from": "שונות",
+    "to": "סוללות"
+  },
+  {
+    "id": "cmqtbk5pv018ewvmw9g619q27",
+    "name": "ENEGIZER AAA8",
+    "barcode": "8888021200720",
+    "from": "שונות",
+    "to": "סוללות"
+  },
+  {
+    "id": "cmqtbk6bl018gwvmwlo7uebui",
+    "name": "ENEGIZER 2025",
+    "barcode": "8888021300161",
+    "from": "שונות",
+    "to": "סוללות"
+  },
+  {
+    "id": "cmqtbk6vj018iwvmwfwtpi3jt",
+    "name": "ENEGIZER 2032",
+    "barcode": "8888021300185",
+    "from": "שונות",
+    "to": "סוללות"
+  },
+  {
+    "id": "cmqtbk7gi018kwvmwctk7h93l",
+    "name": "CR2450 3V סוללת ליתיום",
+    "barcode": "8888021301793",
+    "from": "שונות",
+    "to": "סוללות"
+  }
+]

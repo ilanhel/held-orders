@@ -45,6 +45,9 @@ export default function WarehouseOrderPage({
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  // In-screen confirmation instead of window.confirm — iOS Safari/PWA can
+  // silently suppress native confirm dialogs, making the button appear dead.
+  const [confirming, setConfirming] = useState<'finish' | 'cancel' | null>(null)
 
   async function load() {
     try {
@@ -120,12 +123,12 @@ export default function WarehouseOrderPage({
   }
 
   async function cancelOrder() {
-    if (!confirm(i18n.warehouse.actions.confirmCancel)) return
+    setConfirming(null)
     await transitionTo('CANCELLED')
   }
 
   async function finishAndSend() {
-    if (!confirm(i18n.warehouse.pick.confirmFinish)) return
+    setConfirming(null)
     setBusy(true)
     setError(null)
     setInfo(null)
@@ -223,9 +226,57 @@ export default function WarehouseOrderPage({
           <span className="font-bold text-primary">{formatTotal(order.totalAgorot)}</span>
         </div>
 
-        {isPickable && (
+        {confirming === 'finish' && (
+          <div className="p-3 bg-green-50 border border-green-200 rounded-lg space-y-2">
+            <p className="text-sm text-green-900 text-center">
+              {i18n.warehouse.pick.confirmFinish}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={finishAndSend}
+                disabled={busy}
+                className="flex-1 bg-green-600 text-white font-semibold py-2.5 rounded-lg disabled:opacity-50 active:bg-green-700"
+              >
+                {i18n.common.confirm}
+              </button>
+              <button
+                onClick={() => setConfirming(null)}
+                disabled={busy}
+                className="flex-1 bg-white border border-gray-300 text-gray-700 py-2.5 rounded-lg disabled:opacity-50"
+              >
+                {i18n.common.cancel}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {confirming === 'cancel' && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg space-y-2">
+            <p className="text-sm text-red-900 text-center">
+              {i18n.warehouse.actions.confirmCancel}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={cancelOrder}
+                disabled={busy}
+                className="flex-1 bg-red-600 text-white font-semibold py-2.5 rounded-lg disabled:opacity-50 active:bg-red-700"
+              >
+                {i18n.common.confirm}
+              </button>
+              <button
+                onClick={() => setConfirming(null)}
+                disabled={busy}
+                className="flex-1 bg-white border border-gray-300 text-gray-700 py-2.5 rounded-lg disabled:opacity-50"
+              >
+                {i18n.common.cancel}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {isPickable && confirming === null && (
           <button
-            onClick={finishAndSend}
+            onClick={() => setConfirming('finish')}
             disabled={busy}
             className="w-full bg-green-600 text-white font-semibold py-3 rounded-lg disabled:opacity-50 active:bg-green-700"
           >
@@ -234,7 +285,7 @@ export default function WarehouseOrderPage({
           </button>
         )}
 
-        {nextAction && (
+        {nextAction && confirming === null && (
           <button
             onClick={() => transitionTo(nextAction.status)}
             disabled={busy}
@@ -244,9 +295,9 @@ export default function WarehouseOrderPage({
           </button>
         )}
 
-        {order.status !== 'SHIPPED' && order.status !== 'CANCELLED' && (
+        {order.status !== 'SHIPPED' && order.status !== 'CANCELLED' && confirming === null && (
           <button
-            onClick={cancelOrder}
+            onClick={() => setConfirming('cancel')}
             disabled={busy}
             className="w-full text-red-600 text-sm py-1.5 disabled:opacity-50"
           >
