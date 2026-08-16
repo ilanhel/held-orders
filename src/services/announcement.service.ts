@@ -1,4 +1,4 @@
-import { PrismaClient, Role } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 import { NotificationService } from './notifications'
 
 const prisma = new PrismaClient()
@@ -61,7 +61,9 @@ export class AnnouncementService {
   }
 
   /**
-   * Create a new announcement and broadcast it to all active franchisees.
+   * Create a new announcement and broadcast it to every active user
+   * (franchisees, warehouse and admins) — one message per distinct phone
+   * (several users/branches may share a phone).
    * Admin/Warehouse-only via API.
    */
   static async create(input: {
@@ -79,14 +81,20 @@ export class AnnouncementService {
       },
     })
 
-    // Broadcast to all active franchisees
+    // Broadcast to all active users, deduplicated by phone.
     const recipients = await prisma.user.findMany({
-      where: { role: Role.FRANCHISEE, active: true },
+      where: { active: true },
       select: { phone: true, name: true },
+    })
+    const seen = new Set<string>()
+    const unique = recipients.filter((u) => {
+      if (seen.has(u.phone)) return false
+      seen.add(u.phone)
+      return true
     })
     await NotificationService.broadcast(
       { type: 'ANNOUNCEMENT', title: ann.title, body: ann.body },
-      recipients.map((u) => ({ phone: u.phone, name: u.name }))
+      unique.map((u) => ({ phone: u.phone, name: u.name }))
     )
 
     return {
@@ -114,7 +122,7 @@ export class AnnouncementService {
 
   /**
    * List all announcements (including expired) for the management view, with
-   * read-receipt counts against the current active-franchisee audience.
+   * read-receipt counts against the current active-user audience.
    * Admin/Warehouse only via API.
    */
   static async listForAdmin(): Promise<AnnouncementAdminView[]> {
@@ -123,7 +131,7 @@ export class AnnouncementService {
         orderBy: { createdAt: 'desc' },
         include: { _count: { select: { acks: true } } },
       }),
-      prisma.user.count({ where: { role: Role.FRANCHISEE, active: true } }),
+      prisma.user.count({ where: { active: true } }),
     ])
     return rows.map((a) => ({
       id: a.id,
@@ -139,7 +147,7 @@ export class AnnouncementService {
 
   /**
    * Detailed read receipts for one announcement: who acknowledged (with time)
-   * and which active franchisees have not yet. Throws 'ANNOUNCEMENT_NOT_FOUND'.
+   * and which active users have not yet. Throws 'ANNOUNCEMENT_NOT_FOUND'.
    */
   static async getAcks(announcementId: string): Promise<AnnouncementAckDetail> {
     const ann = await prisma.announcement.findUnique({
@@ -150,7 +158,7 @@ export class AnnouncementService {
 
     const [recipients, acks] = await Promise.all([
       prisma.user.findMany({
-        where: { role: Role.FRANCHISEE, active: true },
+        where: { active: true },
         select: { id: true, name: true, phone: true },
         orderBy: { name: 'asc' },
       }),

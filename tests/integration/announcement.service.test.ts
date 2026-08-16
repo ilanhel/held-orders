@@ -59,13 +59,18 @@ describe('AnnouncementService', () => {
       expect(notifications.sent[0].event.type).toBe('ANNOUNCEMENT')
     })
 
-    it('does not notify warehouse/admin users', async () => {
+    it('notifies warehouse/admin users too, deduplicated by phone', async () => {
       await prisma.user.create({
         data: { name: 'W', phone: '0558888889', role: Role.WAREHOUSE, active: true },
       })
+      // Same phone as U1 — must receive only one message.
+      await prisma.user.create({
+        data: { name: 'DUP', phone: '0558888881', role: Role.ADMIN, active: true },
+      })
       notifications.clear()
       await AnnouncementService.create({ title: 't', body: 'b' })
-      expect(notifications.sent).toHaveLength(2) // still only the 2 franchisees
+      // 2 franchisees + warehouse; the duplicate-phone admin is skipped.
+      expect(notifications.sent).toHaveLength(3)
     })
   })
 
