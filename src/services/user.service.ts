@@ -11,6 +11,7 @@ export interface UserView {
   role: Role
   storeId: string | null
   storeName: string | null
+  storeLoginCode: string | null
   loginCode: string | null
   active: boolean
   createdAt: Date
@@ -25,7 +26,7 @@ function toView(u: {
   loginCode: string | null
   active: boolean
   createdAt: Date
-  store?: { name: string } | null
+  store?: { name: string; loginCode: string | null } | null
 }): UserView {
   return {
     id: u.id,
@@ -34,6 +35,7 @@ function toView(u: {
     role: u.role,
     storeId: u.storeId,
     storeName: u.store?.name ?? null,
+    storeLoginCode: u.store?.loginCode ?? null,
     loginCode: u.loginCode,
     active: u.active,
     createdAt: u.createdAt,
@@ -46,7 +48,7 @@ export class UserService {
     const users = await prisma.user.findMany({
       where: role ? { role } : undefined,
       orderBy: [{ active: 'desc' }, { name: 'asc' }],
-      include: { store: { select: { name: true } } },
+      include: { store: { select: { name: true, loginCode: true } } },
     })
     return users.map(toView)
   }
@@ -89,7 +91,7 @@ export class UserService {
 
     const user = await prisma.user.create({
       data: { name, phone, role: input.role, storeId, loginCode },
-      include: { store: { select: { name: true } } },
+      include: { store: { select: { name: true, loginCode: true } } },
     })
     return toView(user)
   }
@@ -130,7 +132,7 @@ export class UserService {
         ...(input.storeId !== undefined ? { storeId: input.storeId } : {}),
         ...(input.active !== undefined ? { active: input.active } : {}),
       },
-      include: { store: { select: { name: true } } },
+      include: { store: { select: { name: true, loginCode: true } } },
     })
     return toView(updated)
   }

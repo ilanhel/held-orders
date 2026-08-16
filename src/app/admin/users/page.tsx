@@ -13,6 +13,7 @@ type User = {
   role: Role
   storeId: string | null
   storeName: string | null
+  storeLoginCode: string | null
   loginCode: string | null
   active: boolean
 }
@@ -220,7 +221,7 @@ export default function AdminUsersPage() {
                     {u.phone}
                     {u.storeName ? ` · ${u.storeName}` : ''}
                   </div>
-                  {u.role !== 'FRANCHISEE' && (
+                  {u.role !== 'FRANCHISEE' ? (
                     <div className="text-xs mt-1 flex items-center gap-2">
                       <span className="text-gray-500">{t.loginCode}:</span>
                       {u.loginCode ? (
@@ -237,6 +238,17 @@ export default function AdminUsersPage() {
                       >
                         {t.newLoginCode}
                       </button>
+                    </div>
+                  ) : (
+                    <div className="text-xs mt-1 flex items-center gap-2">
+                      <span className="text-gray-500">{t.storeLoginCode}:</span>
+                      {u.storeLoginCode ? (
+                        <span dir="ltr" className="font-mono font-bold text-gray-800 bg-yellow-50 border border-yellow-200 rounded px-1.5 py-0.5 tracking-widest">
+                          {u.storeLoginCode}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">{t.noLoginCode}</span>
+                      )}
                     </div>
                   )}
                 </div>
