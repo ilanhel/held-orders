@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { jwtVerify, SignJWT } from 'jose'
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
 
 const rawSecret = process.env.SESSION_SECRET
 
@@ -58,7 +61,11 @@ export async function verifySession(token: string): Promise<SessionData | null> 
 }
 
 /**
- * Middleware to protect routes
+ * Middleware to protect routes.
+ * The session token only identifies the user — the role, active flag and
+ * store are re-read from the DB on every request, so demoting or
+ * deactivating a user takes effect immediately (not when the long-lived
+ * session token happens to expire).
  */
 export async function requireSession(
   request: NextRequest,
@@ -84,17 +91,37 @@ export async function requireSession(
     }
   }
 
-  if (allowedRoles && !allowedRoles.includes(session.role)) {
+  // Fresh authorization data from the DB (never trust the token's role).
+  const user = await prisma.user.findUnique({
+    where: { id: session.userId },
+    select: { phone: true, role: true, storeId: true, active: true },
+  })
+  if (!user || !user.active) {
+    return {
+      authenticated: false,
+      session: null,
+      error: 'Unauthorized',
+    }
+  }
+
+  const fresh: SessionData = {
+    userId: session.userId,
+    phone: user.phone,
+    role: user.role,
+    storeId: user.storeId ?? session.storeId,
+  }
+
+  if (allowedRoles && !allowedRoles.includes(fresh.role)) {
     return {
       authenticated: true,
-      session,
+      session: fresh,
       error: 'Forbidden',
     }
   }
 
   return {
     authenticated: true,
-    session,
+    session: fresh,
     error: null,
   }
 }
