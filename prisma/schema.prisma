@@ -27,7 +27,7 @@ model Store {
 model User {
   id        String   @id @default(cuid())
   name      String
-  phone     String   @unique
+  phone     String
   role      Role
   storeId   String?
   store     Store?   @relation(fields: [storeId], references: [id], onDelete: SetNull)

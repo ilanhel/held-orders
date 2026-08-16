@@ -51,21 +51,22 @@ class PushServiceImpl {
   }
 
   /**
-   * Send a push notification for an event to every browser the user (matched
-   * by phone) has subscribed. Expired/invalid subscriptions (404/410) are
-   * pruned. Never throws — failures are logged.
+   * Send a push notification for an event to every browser subscribed by
+   * users with this phone (several users/branches may share a phone).
+   * Expired/invalid subscriptions (404/410) are pruned. Never throws —
+   * failures are logged.
    */
   async sendToPhone(phone: string, event: NotificationEvent): Promise<void> {
     if (!this.configured) return
 
-    const user = await prisma.user.findUnique({
+    const users = await prisma.user.findMany({
       where: { phone },
       select: { id: true },
     })
-    if (!user) return
+    if (users.length === 0) return
 
     const subs = await prisma.pushSubscription.findMany({
-      where: { userId: user.id },
+      where: { userId: { in: users.map((u) => u.id) } },
     })
     if (subs.length === 0) return
 

@@ -26,7 +26,6 @@ function authError(error: string | null) {
 
 function mapError(code: string) {
   const map: Record<string, { message: string; status: number }> = {
-    PHONE_EXISTS: { message: i18n.admin.users.phoneExists, status: 409 },
     INVALID_PHONE: { message: i18n.errors.invalidPhone, status: 400 },
     STORE_NOT_FOUND: { message: i18n.errors.invalidStore, status: 400 },
     USER_NOT_FOUND: { message: i18n.errors.notFound, status: 404 },

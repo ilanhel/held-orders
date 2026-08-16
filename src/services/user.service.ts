@@ -52,9 +52,10 @@ export class UserService {
   }
 
   /**
-   * Create a user. Throws 'PHONE_EXISTS' on a duplicate phone,
-   * 'INVALID_PHONE', 'INVALID_NAME', 'STORE_REQUIRED' (a FRANCHISEE must have
-   * a store), or 'STORE_NOT_FOUND'.
+   * Create a user. Multiple users (and branches) may share the same phone —
+   * the phone is only used for WhatsApp notifications, not for login.
+   * Throws 'INVALID_PHONE', 'INVALID_NAME', 'STORE_REQUIRED' (a FRANCHISEE
+   * must have a store), or 'STORE_NOT_FOUND'.
    */
   static async create(input: {
     name: string
@@ -81,9 +82,6 @@ export class UserService {
       if (!store) throw new Error('STORE_NOT_FOUND')
     }
 
-    const existing = await prisma.user.findUnique({ where: { phone } })
-    if (existing) throw new Error('PHONE_EXISTS')
-
     // Warehouse/admin users get a personal login password at creation;
     // franchisees log in with their branch password.
     const loginCode =
@@ -98,7 +96,7 @@ export class UserService {
 
   /**
    * Update a user's name / phone / store / active flag. Throws
-   * 'USER_NOT_FOUND', 'INVALID_PHONE', 'PHONE_EXISTS', or 'STORE_NOT_FOUND'.
+   * 'USER_NOT_FOUND', 'INVALID_PHONE', or 'STORE_NOT_FOUND'.
    */
   static async update(
     id: string,
@@ -116,10 +114,6 @@ export class UserService {
     if (input.phone !== undefined) {
       const normalized = StoreService.normalizePhone(input.phone)
       if (!normalized) throw new Error('INVALID_PHONE')
-      if (normalized !== user.phone) {
-        const clash = await prisma.user.findUnique({ where: { phone: normalized } })
-        if (clash) throw new Error('PHONE_EXISTS')
-      }
       phone = normalized
     }
 

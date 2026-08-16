@@ -172,21 +172,20 @@ describe('UserService', () => {
       expect(u.storeId).toBeNull()
     })
 
-    it('throws PHONE_EXISTS on a duplicate phone', async () => {
+    it('allows two users with the same phone (shared franchisee phone)', async () => {
       await UserService.create({
         name: 'א',
         phone: '0509999997',
         role: Role.FRANCHISEE,
         storeId: store.id,
       })
-      await expect(
-        UserService.create({
-          name: 'ב',
-          phone: '0509999997',
-          role: Role.FRANCHISEE,
-          storeId: store.id,
-        })
-      ).rejects.toThrow('PHONE_EXISTS')
+      const second = await UserService.create({
+        name: 'ב',
+        phone: '0509999997',
+        role: Role.FRANCHISEE,
+        storeId: store.id,
+      })
+      expect(second.phone).toBe('0509999997')
     })
 
     it('throws STORE_NOT_FOUND for an unknown store', async () => {
@@ -226,12 +225,11 @@ describe('UserService', () => {
       expect(updated.active).toBe(false)
     })
 
-    it('throws PHONE_EXISTS when changing to a taken phone', async () => {
+    it('allows changing to a phone already used by another user', async () => {
       const a = await UserService.create({ name: 'א', phone: '0504444444', role: Role.WAREHOUSE })
       await UserService.create({ name: 'ב', phone: '0505555555', role: Role.WAREHOUSE })
-      await expect(
-        UserService.update(a.id, { phone: '0505555555' })
-      ).rejects.toThrow('PHONE_EXISTS')
+      const updated = await UserService.update(a.id, { phone: '0505555555' })
+      expect(updated.phone).toBe('0505555555')
     })
 
     it('throws USER_NOT_FOUND for a missing id', async () => {
