@@ -52,7 +52,6 @@ export default function CatalogPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<Product[] | null>(null)
-  const [savingFor, setSavingFor] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null)
   const [reordering, setReordering] = useState(false)
@@ -60,6 +59,12 @@ export default function CatalogPage() {
   const [pendingSync, setPendingSync] = useState(false)
   const sectionRefs = useRef<Map<string, HTMLElement>>(new Map())
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Optimistic-update bookkeeping: latest desired qty per product not yet
+  // confirmed by the server, per-product debounce timers, and per-product
+  // promise chains that serialize the background PUTs.
+  const pendingQty = useRef<Map<string, number>>(new Map())
+  const syncTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+  const syncChains = useRef<Map<string, Promise<void>>>(new Map())
   // Initial load: catalog + draft
   useEffect(() => {
     let cancelled = false
@@ -127,8 +132,78 @@ export default function CatalogPage() {
 
   async function changeQty(productId: string, qty: number) {
     if (qty < 0) qty = 0
-    setSavingFor(productId)
     setError(null)
+    // Optimistic: update the UI immediately, sync to the server in the
+    // background. Rapid consecutive taps coalesce into a single request.
+    pendingQty.current.set(productId, qty)
+    setOrder((o) => patchOrder(o, productId, qty))
+    const t = syncTimers.current.get(productId)
+    if (t) clearTimeout(t)
+    syncTimers.current.set(
+      productId,
+      setTimeout(() => void queueSync(productId), 300)
+    )
+  }
+
+  function findProduct(productId: string): Product | undefined {
+    for (const c of categories) {
+      const p = c.products.find((x) => x.id === productId)
+      if (p) return p
+    }
+    return searchResults?.find((x) => x.id === productId)
+  }
+
+  // Return a copy of the order with the given product set to qty (added,
+  // updated or removed) and the total recomputed.
+  function patchOrder(o: Order | null, productId: string, qty: number): Order | null {
+    const base: Order =
+      o ?? { id: '', number: null, status: 'DRAFT', items: [], totalAgorot: 0 }
+    const idx = base.items.findIndex((it) => it.productId === productId)
+    let items: OrderItem[]
+    if (qty <= 0) {
+      if (idx === -1) return o
+      items = base.items.filter((it) => it.productId !== productId)
+    } else if (idx === -1) {
+      const p = findProduct(productId)
+      if (!p) return o
+      items = [
+        ...base.items,
+        {
+          id: `local-${productId}`,
+          productId,
+          productName: p.name,
+          productBarcode: p.barcode,
+          priceAgorot: p.priceAgorot,
+          qtyOrdered: qty,
+        },
+      ]
+    } else {
+      items = base.items.map((it) =>
+        it.productId === productId ? { ...it, qtyOrdered: qty } : it
+      )
+    }
+    const totalAgorot = items.reduce((s, it) => s + it.priceAgorot * it.qtyOrdered, 0)
+    return { ...base, items, totalAgorot }
+  }
+
+  // Overlay all still-pending optimistic quantities on a server order, so a
+  // server response never clobbers newer local edits.
+  function applyPending(serverOrder: Order | null): Order | null {
+    let o = serverOrder
+    for (const [pid, q] of pendingQty.current) o = patchOrder(o, pid, q)
+    return o
+  }
+
+  function queueSync(productId: string): Promise<void> {
+    const prev = syncChains.current.get(productId) ?? Promise.resolve()
+    const next = prev.then(() => doSync(productId))
+    syncChains.current.set(productId, next)
+    return next
+  }
+
+  async function doSync(productId: string) {
+    const qty = pendingQty.current.get(productId)
+    if (qty === undefined) return
 
     const maxAttempts = 5
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -148,11 +223,25 @@ export default function CatalogPage() {
           }
           setError(data?.error?.message ?? i18n.errors.serverError)
           setPendingSync(false)
-          break
+          if (pendingQty.current.get(productId) === qty)
+            pendingQty.current.delete(productId)
+          // Re-fetch server truth so the optimistic UI doesn't stay wrong.
+          try {
+            const fresh = await fetch('/api/orders/draft')
+            if (fresh.ok) {
+              const d = await fresh.json()
+              setOrder(applyPending(d.order ?? null))
+            }
+          } catch {
+            // ignore — error already shown
+          }
+          return
         }
-        setOrder(data.order)
         setPendingSync(false)
-        break
+        if (pendingQty.current.get(productId) === qty)
+          pendingQty.current.delete(productId)
+        setOrder(applyPending(data.order))
+        return
       } catch {
         // Network failure (offline / dropped connection) → retry with backoff.
         if (attempt < maxAttempts) {
@@ -160,11 +249,20 @@ export default function CatalogPage() {
           await sleep(backoffMs(attempt))
           continue
         }
+        // Keep the pending value — it will be retried on the next change/flush.
         setError(i18n.errors.network)
         setPendingSync(false)
+        return
       }
     }
-    setSavingFor(null)
+  }
+
+  // Flush all pending quantity changes now (used before leaving to the cart).
+  async function flushPending() {
+    for (const t of syncTimers.current.values()) clearTimeout(t)
+    syncTimers.current.clear()
+    for (const pid of pendingQty.current.keys()) void queueSync(pid)
+    await Promise.all([...syncChains.current.values()])
   }
 
   function scrollToCategory(id: string) {
@@ -327,7 +425,6 @@ export default function CatalogPage() {
                   product={p}
                   qty={cartMap.get(p.id) ?? 0}
                   onChange={(q) => changeQty(p.id, q)}
-                  saving={savingFor === p.id}
                 />
               ))}
             </div>
@@ -357,7 +454,6 @@ export default function CatalogPage() {
                     product={p}
                     qty={cartMap.get(p.id) ?? 0}
                     onChange={(q) => changeQty(p.id, q)}
-                    saving={savingFor === p.id}
                   />
                 ))}
               </div>
@@ -372,7 +468,10 @@ export default function CatalogPage() {
             <div className="font-semibold">{totalQty} {i18n.orders.items}</div>
           </div>
           <button
-            onClick={() => router.push('/cart')}
+            onClick={async () => {
+              await flushPending()
+              router.push('/cart')
+            }}
             className="bg-primary text-white font-semibold px-6 py-3 rounded-lg active:bg-red-700"
           >
             {i18n.orders.cart} ←
@@ -387,12 +486,10 @@ function ProductCard({
   product,
   qty,
   onChange,
-  saving,
 }: {
   product: Product
   qty: number
   onChange: (qty: number) => void
-  saving: boolean
 }) {
   const isOOS = product.status === 'OUT_OF_STOCK'
   return (
@@ -422,7 +519,7 @@ function ProductCard({
         {product.barcode}
       </div>
       <div className="mt-auto">
-        <QtyStepper qty={qty} onChange={onChange} saving={saving} disabled={isOOS} />
+        <QtyStepper qty={qty} onChange={onChange} disabled={isOOS} />
       </div>
     </div>
   )

@@ -1,5 +1,6 @@
 import { PrismaClient, Role } from '@prisma/client'
 import { StoreService } from './store.service'
+import { AuthService } from './auth.service'
 
 const prisma = new PrismaClient()
 
@@ -10,6 +11,7 @@ export interface UserView {
   role: Role
   storeId: string | null
   storeName: string | null
+  loginCode: string | null
   active: boolean
   createdAt: Date
 }
@@ -20,6 +22,7 @@ function toView(u: {
   phone: string
   role: Role
   storeId: string | null
+  loginCode: string | null
   active: boolean
   createdAt: Date
   store?: { name: string } | null
@@ -31,6 +34,7 @@ function toView(u: {
     role: u.role,
     storeId: u.storeId,
     storeName: u.store?.name ?? null,
+    loginCode: u.loginCode,
     active: u.active,
     createdAt: u.createdAt,
   }
@@ -80,8 +84,13 @@ export class UserService {
     const existing = await prisma.user.findUnique({ where: { phone } })
     if (existing) throw new Error('PHONE_EXISTS')
 
+    // Warehouse/admin users get a personal login password at creation;
+    // franchisees log in with their branch password.
+    const loginCode =
+      input.role === Role.FRANCHISEE ? null : await AuthService.uniqueCode()
+
     const user = await prisma.user.create({
-      data: { name, phone, role: input.role, storeId },
+      data: { name, phone, role: input.role, storeId, loginCode },
       include: { store: { select: { name: true } } },
     })
     return toView(user)

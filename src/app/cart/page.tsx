@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { i18n } from '@/lib/i18n'
 import { QtyStepper } from '@/components/QtyStepper'
@@ -28,7 +28,10 @@ export default function CartPage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [savingFor, setSavingFor] = useState<string | null>(null)
+  // Optimistic-update bookkeeping (same pattern as the catalog page).
+  const pendingQty = useRef<Map<string, number>>(new Map())
+  const syncTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+  const syncChains = useRef<Map<string, Promise<void>>>(new Map())
 
   useEffect(() => {
     let cancelled = false
@@ -53,33 +56,96 @@ export default function CartPage() {
     }
   }, [router])
 
-  async function changeQty(productId: string, qty: number) {
+  function changeQty(productId: string, qty: number) {
     if (qty < 0) qty = 0
-    setSavingFor(productId)
     setError(null)
+    // Optimistic: update the UI immediately, sync to the server in the
+    // background. Rapid consecutive taps coalesce into a single request.
+    pendingQty.current.set(productId, qty)
+    setOrder((o) => patchOrder(o, productId, qty))
+    const t = syncTimers.current.get(productId)
+    if (t) clearTimeout(t)
+    syncTimers.current.set(
+      productId,
+      setTimeout(() => void queueSync(productId), 300)
+    )
+  }
+
+  // Return a copy of the order with the given product's qty updated (or the
+  // item removed when qty=0) and the total recomputed.
+  function patchOrder(o: Order | null, productId: string, qty: number): Order | null {
+    if (!o) return o
+    const items =
+      qty <= 0
+        ? o.items.filter((it) => it.productId !== productId)
+        : o.items.map((it) =>
+            it.productId === productId ? { ...it, qtyOrdered: qty } : it
+          )
+    const totalAgorot = items.reduce((s, it) => s + it.priceAgorot * it.qtyOrdered, 0)
+    return { ...o, items, totalAgorot }
+  }
+
+  // Overlay all still-pending optimistic quantities on a server order, so a
+  // server response never clobbers newer local edits.
+  function applyPending(serverOrder: Order | null): Order | null {
+    let o = serverOrder
+    for (const [pid, q] of pendingQty.current) o = patchOrder(o, pid, q)
+    return o
+  }
+
+  function queueSync(productId: string): Promise<void> {
+    const prev = syncChains.current.get(productId) ?? Promise.resolve()
+    const next = prev.then(() => doSync(productId))
+    syncChains.current.set(productId, next)
+    return next
+  }
+
+  async function doSync(productId: string) {
+    const qty = pendingQty.current.get(productId)
+    if (qty === undefined) return
     try {
       const res = await fetch('/api/orders/draft/items', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ productId, qty }),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
+      if (pendingQty.current.get(productId) === qty)
+        pendingQty.current.delete(productId)
       if (!res.ok) {
         setError(data?.error?.message ?? i18n.errors.serverError)
+        // Re-fetch server truth so the optimistic UI doesn't stay wrong.
+        try {
+          const fresh = await fetch('/api/orders/draft')
+          if (fresh.ok) {
+            const d = await fresh.json()
+            setOrder(applyPending(d.order ?? null))
+          }
+        } catch {
+          // ignore — error already shown
+        }
         return
       }
-      setOrder(data.order)
+      setOrder(applyPending(data.order))
     } catch {
       setError(i18n.errors.network)
-    } finally {
-      setSavingFor(null)
     }
+  }
+
+  // Flush all pending quantity changes now (used before submitting).
+  async function flushPending() {
+    for (const t of syncTimers.current.values()) clearTimeout(t)
+    syncTimers.current.clear()
+    for (const pid of pendingQty.current.keys()) void queueSync(pid)
+    await Promise.all([...syncChains.current.values()])
   }
 
   async function submit() {
     setSubmitting(true)
     setError(null)
     try {
+      // Make sure every optimistic change reached the server first.
+      await flushPending()
       const res = await fetch('/api/orders/draft/submit', { method: 'POST' })
       const data = await res.json()
       if (!res.ok) {
@@ -160,12 +226,10 @@ export default function CartPage() {
                   <QtyStepper
                     qty={item.qtyOrdered}
                     onChange={(q) => changeQty(item.productId, q)}
-                    saving={savingFor === item.productId}
                     size="sm"
                   />
                   <button
                     onClick={() => changeQty(item.productId, 0)}
-                    disabled={savingFor === item.productId}
                     className="text-xs text-gray-400 hover:text-red-500"
                   >
                     {i18n.catalog.remove}

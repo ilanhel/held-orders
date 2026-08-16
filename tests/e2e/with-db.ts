@@ -51,7 +51,7 @@ async function main() {
     ['next', 'dev', '-p', String(PORT)],
     {
       stdio: 'inherit',
-      env: { ...env, E2E_FIXED_OTP: '000000', NOTIFICATION_DRIVER: 'console' },
+      env: { ...env, NOTIFICATION_DRIVER: 'console' },
     }
   )
 

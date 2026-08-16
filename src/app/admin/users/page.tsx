@@ -13,6 +13,7 @@ type User = {
   role: Role
   storeId: string | null
   storeName: string | null
+  loginCode: string | null
   active: boolean
 }
 
@@ -86,6 +87,27 @@ export default function AdminUsersPage() {
           prev.map((x) => (x.id === u.id ? { ...x, active: !u.active } : x))
         )
         flash(t.updated)
+      }
+    } catch {
+      setError(i18n.errors.network)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function issueLoginCode(u: User) {
+    if (u.loginCode && !window.confirm(t.confirmNewLoginCode)) return
+    setBusyId(u.id)
+    setError(null)
+    try {
+      const res = await fetch(`/api/users/${u.id}/login-code`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) setError(data?.error?.message ?? i18n.errors.serverError)
+      else {
+        setUsers((prev) =>
+          prev.map((x) => (x.id === u.id ? { ...x, loginCode: data.loginCode } : x))
+        )
+        flash(t.loginCodeIssued.replace('{code}', data.loginCode))
       }
     } catch {
       setError(i18n.errors.network)
@@ -181,6 +203,25 @@ export default function AdminUsersPage() {
                     {u.phone}
                     {u.storeName ? ` · ${u.storeName}` : ''}
                   </div>
+                  {u.role !== 'FRANCHISEE' && (
+                    <div className="text-xs mt-1 flex items-center gap-2">
+                      <span className="text-gray-500">{t.loginCode}:</span>
+                      {u.loginCode ? (
+                        <span dir="ltr" className="font-mono font-bold text-gray-800 bg-yellow-50 border border-yellow-200 rounded px-1.5 py-0.5 tracking-widest">
+                          {u.loginCode}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">{t.noLoginCode}</span>
+                      )}
+                      <button
+                        onClick={() => issueLoginCode(u)}
+                        disabled={busyId === u.id}
+                        className="text-xs px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+                      >
+                        {t.newLoginCode}
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <button
                   onClick={() => toggleActive(u)}

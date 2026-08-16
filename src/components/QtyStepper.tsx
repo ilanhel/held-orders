@@ -10,17 +10,18 @@ const MAX_QTY = 9999
  * so the franchisee can either tap to adjust or type an exact quantity.
  * Typed values are committed on blur / Enter. Always visible (including
  * qty=0); the "−" button is disabled while the quantity is 0.
+ * The buttons are never disabled while saving — parents apply the change
+ * optimistically and sync to the server in the background, so rapid
+ * consecutive taps all register immediately.
  */
 export function QtyStepper({
   qty,
   onChange,
-  saving,
   disabled,
   size = 'md',
 }: {
   qty: number
   onChange: (qty: number) => void
-  saving: boolean
   disabled?: boolean
   size?: 'md' | 'sm'
 }) {
@@ -79,7 +80,7 @@ export function QtyStepper({
       <button
         type="button"
         onClick={() => onChange(qty - 1)}
-        disabled={saving || disabled || qty <= 0}
+        disabled={disabled || qty <= 0}
         className={`${btn} rounded-md bg-white text-gray-700 font-bold active:bg-gray-200 disabled:opacity-50 flex-shrink-0`}
         aria-label={i18n.catalog.decreaseQty}
       >
@@ -110,7 +111,7 @@ export function QtyStepper({
       <button
         type="button"
         onClick={() => onChange(qty + 1)}
-        disabled={saving || disabled}
+        disabled={disabled}
         className={`${btn} rounded-md bg-primary text-white font-bold active:bg-red-700 disabled:opacity-50 flex-shrink-0`}
         aria-label={i18n.catalog.increaseQty}
       >

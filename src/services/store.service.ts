@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client'
+import { AuthService } from './auth.service'
 
 const prisma = new PrismaClient()
 
@@ -7,6 +8,7 @@ export interface StoreView {
   name: string
   code: string
   phone: string
+  loginCode: string | null
   active: boolean
   userCount: number
   createdAt: Date
@@ -34,6 +36,7 @@ export class StoreService {
       name: s.name,
       code: s.code,
       phone: s.phone,
+      loginCode: s.loginCode,
       active: s.active,
       userCount: s._count.users,
       createdAt: s.createdAt,
@@ -60,14 +63,17 @@ export class StoreService {
     const existing = await prisma.store.findUnique({ where: { code } })
     if (existing) throw new Error('STORE_CODE_EXISTS')
 
+    // Every branch gets a login password at creation.
+    const loginCode = await AuthService.uniqueCode()
     const store = await prisma.store.create({
-      data: { name, code, phone },
+      data: { name, code, phone, loginCode },
     })
     return {
       id: store.id,
       name: store.name,
       code: store.code,
       phone: store.phone,
+      loginCode: store.loginCode,
       active: store.active,
       userCount: 0,
       createdAt: store.createdAt,
@@ -106,6 +112,7 @@ export class StoreService {
       name: updated.name,
       code: updated.code,
       phone: updated.phone,
+      loginCode: updated.loginCode,
       active: updated.active,
       userCount: updated._count.users,
       createdAt: updated.createdAt,

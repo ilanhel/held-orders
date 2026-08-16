@@ -16,6 +16,7 @@ model Store {
   name      String
   code      String   @unique
   phone     String
+  loginCode String?  @unique
   active    Boolean  @default(true)
   users     User[]
   orders    Order[]
@@ -30,6 +31,7 @@ model User {
   role      Role
   storeId   String?
   store     Store?   @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  loginCode String?  @unique
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

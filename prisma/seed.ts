@@ -24,6 +24,7 @@ async function main() {
       name: 'HELD עזריאלי ת"א',
       code: 'AZR-TLV',
       phone: '0550000001',
+      loginCode: '111111',
       active: true,
     },
   })
@@ -33,6 +34,7 @@ async function main() {
       name: 'HELD גרנד קניון חיפה',
       code: 'GRD-HFA',
       phone: '0550000002',
+      loginCode: '222222',
       active: true,
     },
   })
@@ -63,6 +65,7 @@ async function main() {
       name: 'יוסי כהן',
       phone: '0550000003',
       role: Role.WAREHOUSE,
+      loginCode: '333333',
       active: true,
     },
   })
@@ -72,6 +75,7 @@ async function main() {
       name: 'מנהל HELD',
       phone: '0550000004',
       role: Role.ADMIN,
+      loginCode: '444444',
       active: true,
     },
   })

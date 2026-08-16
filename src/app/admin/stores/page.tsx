@@ -9,6 +9,7 @@ type Store = {
   name: string
   code: string
   phone: string
+  loginCode: string | null
   active: boolean
   userCount: number
 }
@@ -89,6 +90,27 @@ export default function AdminStoresPage() {
       else {
         setStores((prev) => prev.filter((x) => x.id !== s.id))
         flash(t.deleted)
+      }
+    } catch {
+      setError(i18n.errors.network)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function issueLoginCode(s: Store) {
+    if (s.loginCode && !window.confirm(t.confirmNewLoginCode)) return
+    setBusyId(s.id)
+    setError(null)
+    try {
+      const res = await fetch(`/api/stores/${s.id}/login-code`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) setError(data?.error?.message ?? i18n.errors.serverError)
+      else {
+        setStores((prev) =>
+          prev.map((x) => (x.id === s.id ? { ...x, loginCode: data.loginCode } : x))
+        )
+        flash(t.loginCodeIssued.replace('{code}', data.loginCode))
       }
     } catch {
       setError(i18n.errors.network)
@@ -195,6 +217,23 @@ export default function AdminStoresPage() {
                     </div>
                     <div className="text-xs text-gray-500 mt-0.5">
                       {s.phone} · {s.userCount} {t.users}
+                    </div>
+                    <div className="text-xs mt-1 flex items-center gap-2">
+                      <span className="text-gray-500">{t.loginCode}:</span>
+                      {s.loginCode ? (
+                        <span dir="ltr" className="font-mono font-bold text-gray-800 bg-yellow-50 border border-yellow-200 rounded px-1.5 py-0.5 tracking-widest">
+                          {s.loginCode}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">{t.noLoginCode}</span>
+                      )}
+                      <button
+                        onClick={() => issueLoginCode(s)}
+                        disabled={busyId === s.id}
+                        className="text-xs px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+                      >
+                        {t.newLoginCode}
+                      </button>
                     </div>
                   </div>
                   <button

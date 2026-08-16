@@ -6,20 +6,16 @@ import { test, expect, type Page } from '@playwright/test'
  *   Warehouse logs in → finds the order in the queue → advances it
  *   through RECEIVED → PICKING → READY → SHIPPED.
  *
- * OTP is deterministic via E2E_FIXED_OTP=000000 (set by playwright webServer).
- * Seed users (prisma/seed.ts):
- *   - Franchisee: 0550000001 (HELD עזריאלי ת"א)
- *   - Warehouse:  0550000003
+ * Login is password-based (Store.loginCode / User.loginCode).
+ * Seed passwords (prisma/seed.ts):
+ *   - Branch AZR-TLV (franchisee): 111111
+ *   - Warehouse user:              333333
  */
 
-const FIXED_OTP = '000000'
-
-async function login(page: Page, phone: string) {
+async function login(page: Page, code: string) {
   await page.goto('/login')
-  await page.getByPlaceholder('05X-XXXXXXX').fill(phone)
-  await page.getByRole('button', { name: 'שליחת קוד' }).click()
-  await page.getByPlaceholder('6 ספרות').fill(FIXED_OTP)
-  await page.getByRole('button', { name: 'אישור' }).click()
+  await page.getByPlaceholder('6 ספרות').fill(code)
+  await page.getByRole('button', { name: 'כניסה' }).click()
 }
 
 test('franchisee submits an order and warehouse ships it', async ({ browser }) => {
@@ -27,7 +23,7 @@ test('franchisee submits an order and warehouse ships it', async ({ browser }) =
   const franchiseeCtx = await browser.newContext()
   const fr = await franchiseeCtx.newPage()
 
-  await login(fr, '0550000001')
+  await login(fr, '111111')
   await expect(fr).toHaveURL(/\/catalog$/)
 
   // Add the first available product to the cart (the "+" button on the stepper)
@@ -54,7 +50,7 @@ test('franchisee submits an order and warehouse ships it', async ({ browser }) =
   const warehouseCtx = await browser.newContext()
   const wh = await warehouseCtx.newPage()
 
-  await login(wh, '0550000003')
+  await login(wh, '333333')
   await expect(wh).toHaveURL(/\/warehouse$/)
 
   // Find the order in the queue by its number and open it
