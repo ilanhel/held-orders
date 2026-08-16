@@ -35,6 +35,7 @@ export default function AdminUsersPage() {
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -182,7 +183,23 @@ export default function AdminUsersPage() {
           <p className="text-gray-500 py-12 text-center">{t.noUsers}</p>
         ) : (
           <ul className="space-y-2">
-            {users.map((u) => (
+            {users.map((u) =>
+              editingId === u.id ? (
+                <li key={u.id}>
+                  <EditUserForm
+                    user={u}
+                    onCancel={() => setEditingId(null)}
+                    onSaved={(updated) => {
+                      setUsers((prev) =>
+                        prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x))
+                      )
+                      setEditingId(null)
+                      flash(t.updated)
+                    }}
+                    onError={setError}
+                  />
+                </li>
+              ) : (
               <li
                 key={u.id}
                 className="bg-white rounded-xl border border-gray-200 p-3 flex items-center gap-3"
@@ -224,6 +241,15 @@ export default function AdminUsersPage() {
                   )}
                 </div>
                 <button
+                  onClick={() => {
+                    setError(null)
+                    setEditingId(u.id)
+                  }}
+                  className="text-xs px-3 py-1.5 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100"
+                >
+                  {t.edit}
+                </button>
+                <button
                   onClick={() => toggleActive(u)}
                   disabled={busyId === u.id}
                   className={`text-xs px-3 py-1.5 rounded-md disabled:opacity-50 ${
@@ -235,11 +261,93 @@ export default function AdminUsersPage() {
                   {u.active ? t.deactivate : t.activate}
                 </button>
               </li>
-            ))}
+              )
+            )}
           </ul>
         )}
       </section>
     </main>
+  )
+}
+
+function EditUserForm({
+  user,
+  onCancel,
+  onSaved,
+  onError,
+}: {
+  user: User
+  onCancel: () => void
+  onSaved: (updated: { id: string; name: string; phone: string }) => void
+  onError: (msg: string) => void
+}) {
+  const [name, setName] = useState(user.name)
+  const [phone, setPhone] = useState(user.phone)
+  const [saving, setSaving] = useState(false)
+
+  const valid = name.trim() && phone.trim()
+
+  async function submit() {
+    if (!valid || saving) return
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/users/${user.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), phone: phone.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) onError(data?.error?.message ?? i18n.errors.serverError)
+      else onSaved({ id: user.id, name: data.user.name, phone: data.user.phone })
+    } catch {
+      onError(i18n.errors.network)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-blue-200 ring-1 ring-blue-100 p-4">
+      <h3 className="font-semibold text-gray-800 mb-3">
+        {t.editUser} ·{' '}
+        <span className="text-gray-400 text-sm">{t.roles[user.role]}</span>
+      </h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <label className="block">
+          <span className="text-xs text-gray-500">{t.name}</span>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+          />
+        </label>
+        <label className="block">
+          <span className="text-xs text-gray-500">{t.phone}</span>
+          <input
+            value={phone}
+            inputMode="tel"
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="050-0000000"
+            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-left focus:border-primary focus:outline-none"
+          />
+        </label>
+      </div>
+      <div className="flex gap-2 mt-4">
+        <button
+          onClick={submit}
+          disabled={!valid || saving}
+          className="bg-primary text-white rounded-lg px-4 py-2 text-sm font-semibold hover:opacity-90 disabled:opacity-50"
+        >
+          {saving ? t.saving : t.save}
+        </button>
+        <button
+          onClick={onCancel}
+          className="rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100"
+        >
+          {t.cancel}
+        </button>
+      </div>
+    </div>
   )
 }
 

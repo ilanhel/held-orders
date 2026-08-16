@@ -250,6 +250,8 @@ export const i18n = {
       title: 'ניהול משתמשים',
       newUser: 'משתמש חדש',
       addUser: 'הוספת משתמש',
+      editUser: 'עריכת משתמש',
+      edit: 'עריכה',
       name: 'שם',
       phone: 'טלפון (05...)',
       role: 'תפקיד',
