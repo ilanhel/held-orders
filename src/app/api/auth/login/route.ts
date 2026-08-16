@@ -12,7 +12,6 @@ const ERROR_MAP: Record<string, { status: number; message: string }> = {
   INVALID_CODE: { status: 401, message: i18n.errors.invalidLoginCode },
   USER_INACTIVE: { status: 401, message: i18n.errors.invalidLoginCode },
   STORE_INACTIVE: { status: 403, message: i18n.errors.storeInactive },
-  NO_USER_FOR_STORE: { status: 403, message: i18n.errors.noUserForStore },
 }
 
 /** POST /api/auth/login — log in with a branch / personal password. */

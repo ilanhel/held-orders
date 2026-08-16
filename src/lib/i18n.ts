@@ -8,7 +8,6 @@ export const i18n = {
     invalidPhone: 'מספר טלפון לא תקין',
     invalidLoginCode: 'סיסמה שגויה',
     storeInactive: 'הסניף מושבת — פנו למטה',
-    noUserForStore: 'לא הוגדר משתמש לסניף — פנו למטה',
     otpExpired: 'הקוד פג תוקף',
     otpInvalid: 'קוד שגוי',
     tooManyAttempts: 'יותר מדי ניסיונות, אנא נסו שוב בעוד 15 דקות',

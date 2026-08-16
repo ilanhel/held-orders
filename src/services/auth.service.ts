@@ -68,19 +68,30 @@ export class AuthService {
 
   /**
    * Log in with a password. A branch password opens a session as the branch's
-   * (oldest active) franchisee user; a personal password logs in that staff
-   * user. Throws 'INVALID_CODE', 'STORE_INACTIVE', 'NO_USER_FOR_STORE' or
-   * 'USER_INACTIVE'.
+   * (oldest active) franchisee user — if the branch has none, one is created
+   * automatically from the branch's own name and phone, so a branch password
+   * ALWAYS works. A personal password logs in that staff user.
+   * Throws 'INVALID_CODE', 'STORE_INACTIVE' or 'USER_INACTIVE'.
    */
   static async loginWithCode(code: string): Promise<LoginUser> {
     const store = await prisma.store.findUnique({ where: { loginCode: code } })
     if (store) {
       if (!store.active) throw new Error('STORE_INACTIVE')
-      const user = await prisma.user.findFirst({
+      let user = await prisma.user.findFirst({
         where: { storeId: store.id, role: Role.FRANCHISEE, active: true },
         orderBy: { createdAt: 'asc' },
       })
-      if (!user) throw new Error('NO_USER_FOR_STORE')
+      if (!user) {
+        // Self-heal: the branch has no order user yet — create one.
+        user = await prisma.user.create({
+          data: {
+            name: store.name,
+            phone: store.phone,
+            role: Role.FRANCHISEE,
+            storeId: store.id,
+          },
+        })
+      }
       return {
         id: user.id,
         name: user.name,

@@ -129,11 +129,19 @@ describe('AuthService', () => {
       expect(login.id).toBe(u2.id)
     })
 
-    it('throws NO_USER_FOR_STORE when the branch has no active franchisee', async () => {
+    it('auto-creates a franchisee user when the branch has none', async () => {
       const store = await makeStore()
-      await expect(AuthService.loginWithCode(store.loginCode!)).rejects.toThrow(
-        'NO_USER_FOR_STORE'
-      )
+      const login = await AuthService.loginWithCode(store.loginCode!)
+      expect(login.role).toBe(Role.FRANCHISEE)
+      expect(login.storeId).toBe(store.id)
+      expect(login.name).toBe(store.name)
+      const created = await prisma.user.findFirst({
+        where: { storeId: store.id, role: Role.FRANCHISEE, active: true },
+      })
+      expect(created).not.toBeNull()
+      // Second login reuses the same auto-created user.
+      const again = await AuthService.loginWithCode(store.loginCode!)
+      expect(again.id).toBe(login.id)
     })
 
     it('throws STORE_INACTIVE for a deactivated branch', async () => {
