@@ -35,6 +35,15 @@ export interface AdminCategory {
   productCount: number
 }
 
+/** A barcode variant of a multi-barcode product, for the admin barcode panel. */
+export interface ProductBarcodeView {
+  id: string
+  barcode: string
+  active: boolean
+  isPrimary: boolean
+  assignedStores: number
+}
+
 export class CatalogService {
   /**
    * Get all visible categories (with their visible products: ACTIVE + OUT_OF_STOCK).
@@ -513,6 +522,88 @@ export class CatalogService {
     if (product._count.orderItems > 0) throw new Error('PRODUCT_IN_ORDERS')
 
     await prisma.product.delete({ where: { id } })
+  }
+
+  /**
+   * List all barcode variants of a product (ProductBarcodeAlias rows),
+   * including how many stores are currently assigned to each barcode.
+   */
+  static async listBarcodes(productId: string): Promise<ProductBarcodeView[]> {
+    const product = await prisma.product.findUnique({ where: { id: productId } })
+    if (!product) throw new Error('PRODUCT_NOT_FOUND')
+
+    const aliases = await prisma.productBarcodeAlias.findMany({
+      where: { productId },
+      orderBy: { createdAt: 'asc' },
+    })
+    const counts = await prisma.storeProductBarcode.groupBy({
+      by: ['barcode'],
+      where: { productId },
+      _count: { _all: true },
+    })
+    const countMap = new Map(counts.map((c) => [c.barcode, c._count._all]))
+    return aliases.map((a) => ({
+      id: a.id,
+      barcode: a.barcode,
+      active: a.active,
+      isPrimary: a.barcode === product.barcode,
+      assignedStores: countMap.get(a.barcode) ?? 0,
+    }))
+  }
+
+  /**
+   * Add a new barcode variant to a product. If this is the product's first
+   * alias, the primary barcode is registered as an alias too so distribution
+   * covers all variants. Throws 'PRODUCT_NOT_FOUND' / 'BARCODE_EXISTS'.
+   */
+  static async addBarcode(productId: string, barcode: string): Promise<ProductBarcodeView[]> {
+    const value = barcode.trim()
+    if (!value) throw new Error('INVALID_BARCODE')
+
+    const product = await prisma.product.findUnique({ where: { id: productId } })
+    if (!product) throw new Error('PRODUCT_NOT_FOUND')
+
+    const [productClash, aliasClash] = await Promise.all([
+      prisma.product.findUnique({ where: { barcode: value } }),
+      prisma.productBarcodeAlias.findUnique({ where: { barcode: value } }),
+    ])
+    if (productClash || aliasClash) throw new Error('BARCODE_EXISTS')
+
+    await prisma.$transaction(async (tx) => {
+      // Ensure the primary barcode is represented as an alias
+      const existingAliases = await tx.productBarcodeAlias.count({ where: { productId } })
+      if (existingAliases === 0) {
+        await tx.productBarcodeAlias.create({
+          data: { productId, barcode: product.barcode },
+        })
+      }
+      await tx.productBarcodeAlias.create({ data: { productId, barcode: value } })
+    })
+    return this.listBarcodes(productId)
+  }
+
+  /**
+   * Hide (active=false) or restore a barcode variant. A hidden barcode is
+   * never assigned to stores; stores currently on it move to an active one on
+   * their next order. At least one barcode must stay active — otherwise
+   * throws 'LAST_ACTIVE_BARCODE'. Throws 'BARCODE_NOT_FOUND'.
+   */
+  static async setBarcodeActive(aliasId: string, active: boolean): Promise<ProductBarcodeView[]> {
+    const alias = await prisma.productBarcodeAlias.findUnique({ where: { id: aliasId } })
+    if (!alias) throw new Error('BARCODE_NOT_FOUND')
+
+    if (!active) {
+      const activeCount = await prisma.productBarcodeAlias.count({
+        where: { productId: alias.productId, active: true },
+      })
+      if (alias.active && activeCount <= 1) throw new Error('LAST_ACTIVE_BARCODE')
+    }
+
+    await prisma.productBarcodeAlias.update({
+      where: { id: aliasId },
+      data: { active },
+    })
+    return this.listBarcodes(alias.productId)
   }
 
   private static toCatalogProduct(p: {

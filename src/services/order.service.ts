@@ -174,6 +174,13 @@ export class OrderService {
     })
     const nextNumber = (lastOrder?.number ?? 1000) + 1
 
+    // Resolve per-store barcode for multi-barcode products (sticky + balanced)
+    const assignedBarcodes = new Map<string, string>()
+    for (const productId of productIds) {
+      const assigned = await this.resolveStoreBarcode(order.storeId, productId)
+      if (assigned) assignedBarcodes.set(productId, assigned)
+    }
+
     await prisma.$transaction(async (tx) => {
       // Update each item's price/name from current product
       for (const item of order.items) {
@@ -183,7 +190,7 @@ export class OrderService {
           data: {
             priceAgorot: p.priceAgorot,
             productName: p.name,
-            productBarcode: p.barcode,
+            productBarcode: assignedBarcodes.get(item.productId) ?? p.barcode,
           },
         })
       }
@@ -235,6 +242,68 @@ export class OrderService {
     }
 
     return view
+  }
+
+  /**
+   * For a multi-barcode product (has rows in ProductBarcodeAlias), return the
+   * barcode assigned to this store — sticky across orders. First-time
+   * assignment picks the least-used ACTIVE alias so stores are split evenly
+   * between barcodes (ties broken at random). Hidden (inactive) aliases are
+   * never assigned; a store stuck on a now-hidden alias is reassigned.
+   * Returns null for regular products.
+   */
+  static async resolveStoreBarcode(storeId: string, productId: string): Promise<string | null> {
+    const aliases = await prisma.productBarcodeAlias.findMany({
+      where: { productId },
+      select: { barcode: true, active: true },
+    })
+    if (aliases.length < 2) return null
+    const candidates = aliases.filter((a) => a.active).map((a) => a.barcode)
+    if (candidates.length === 0) return null
+
+    const existing = await prisma.storeProductBarcode.findUnique({
+      where: { storeId_productId: { storeId, productId } },
+    })
+    if (existing && candidates.includes(existing.barcode)) return existing.barcode
+
+    // Pick the alias with the fewest store assignments (even split)
+    const counts = await prisma.storeProductBarcode.groupBy({
+      by: ['barcode'],
+      where: { productId, barcode: { in: candidates } },
+      _count: { _all: true },
+    })
+    const countMap = new Map(counts.map((c) => [c.barcode, c._count._all]))
+    const shuffled = [...candidates].sort(() => Math.random() - 0.5)
+    let best = shuffled[0]
+    let bestCount = Infinity
+    for (const barcode of shuffled) {
+      const count = countMap.get(barcode) ?? 0
+      if (count < bestCount) {
+        best = barcode
+        bestCount = count
+      }
+    }
+
+    if (existing) {
+      // Stale assignment (barcode no longer an alias) — reassign
+      await prisma.storeProductBarcode.update({
+        where: { id: existing.id },
+        data: { barcode: best },
+      })
+      return best
+    }
+    try {
+      await prisma.storeProductBarcode.create({
+        data: { storeId, productId, barcode: best },
+      })
+      return best
+    } catch {
+      // Unique race: another submit assigned concurrently — use theirs
+      const winner = await prisma.storeProductBarcode.findUnique({
+        where: { storeId_productId: { storeId, productId } },
+      })
+      return winner?.barcode ?? best
+    }
   }
 
   /**

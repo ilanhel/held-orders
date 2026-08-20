@@ -20,6 +20,7 @@ model Store {
   active    Boolean  @default(true)
   users     User[]
   orders    Order[]
+  productBarcodes StoreProductBarcode[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -73,6 +74,8 @@ model Product {
   updatedAt       DateTime      @updatedAt
   priceHistory    PriceChange[]
   orderItems      OrderItem[]
+  barcodeAliases  ProductBarcodeAlias[]
+  storeBarcodes   StoreProductBarcode[]
 
   @@index([categoryId])
   @@index([status])
@@ -83,6 +86,34 @@ enum ProductStatus {
   ACTIVE
   OUT_OF_STOCK
   HIDDEN
+}
+
+// All barcode variants of a multi-barcode product (includes the primary barcode).
+// Franchisees see the product once; the picking barcode is chosen per store.
+model ProductBarcodeAlias {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  barcode   String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+}
+
+// Sticky barcode assignment: which alias barcode a given store always gets
+// on picking lists. Assigned on first submitted order, balanced evenly.
+model StoreProductBarcode {
+  id        String   @id @default(cuid())
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  barcode   String
+  createdAt DateTime @default(now())
+
+  @@unique([storeId, productId])
+  @@index([productId])
 }
 
 model PriceChange {

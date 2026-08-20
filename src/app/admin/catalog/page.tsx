@@ -44,6 +44,7 @@ export default function AdminCatalogPage() {
   const [showForm, setShowForm] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [barcodesOpenId, setBarcodesOpenId] = useState<string | null>(null)
   const [page, setPage] = useState(1)
 
   const load = useCallback(async () => {
@@ -434,7 +435,16 @@ export default function AdminCatalogPage() {
                     </div>
                     <div className="text-xs text-gray-500 mt-0.5">
                       {p.categoryName} · {p.barcode}
+                      <button
+                        onClick={() =>
+                          setBarcodesOpenId((cur) => (cur === p.id ? null : p.id))
+                        }
+                        className="ms-2 text-blue-600 hover:underline"
+                      >
+                        {t.barcodes.manage}
+                      </button>
                     </div>
+                    {barcodesOpenId === p.id && <BarcodesEditor productId={p.id} />}
                   </div>
 
                   {/* Inline price edit */}
@@ -529,6 +539,167 @@ export default function AdminCatalogPage() {
         )}
       </section>
     </main>
+  )
+}
+
+function BarcodesEditor({ productId }: { productId: string }) {
+  const tb = t.barcodes
+  type BarcodeRow = {
+    id: string
+    barcode: string
+    active: boolean
+    isPrimary: boolean
+    assignedStores: number
+  }
+  const [rows, setRows] = useState<BarcodeRow[] | null>(null)
+  const [newBarcode, setNewBarcode] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/products/${productId}/barcodes`)
+        const data = await res.json()
+        if (cancelled) return
+        if (!res.ok) setError(data?.error?.message ?? i18n.errors.serverError)
+        else setRows(data.barcodes ?? [])
+      } catch {
+        if (!cancelled) setError(i18n.errors.network)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [productId])
+
+  function flash(msg: string) {
+    setMessage(msg)
+    setTimeout(() => setMessage(null), 2000)
+  }
+
+  async function addBarcode() {
+    const value = newBarcode.trim()
+    if (!value || busy) return
+    setBusy(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/products/${productId}/barcodes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ barcode: value }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data?.error?.message ?? i18n.errors.serverError)
+      } else {
+        setRows(data.barcodes ?? [])
+        setNewBarcode('')
+        flash(tb.added)
+      }
+    } catch {
+      setError(i18n.errors.network)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function setActive(row: BarcodeRow, active: boolean) {
+    if (busy) return
+    setBusy(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/products/${productId}/barcodes/${row.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data?.error?.message ?? i18n.errors.serverError)
+      } else {
+        setRows(data.barcodes ?? [])
+        flash(tb.updated)
+      }
+    } catch {
+      setError(i18n.errors.network)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="mt-2 rounded-lg border border-gray-200 bg-gray-50 p-2 text-xs">
+      {rows === null && !error ? (
+        <p className="text-gray-400 py-1">{i18n.common.loading}</p>
+      ) : (
+        <>
+          {error && <p className="text-red-600 mb-1">{error}</p>}
+          {message && <p className="text-green-700 mb-1">{message}</p>}
+          {rows !== null && rows.length < 2 && (
+            <p className="text-gray-500 mb-1">{tb.empty}</p>
+          )}
+          <ul className="space-y-1">
+            {(rows ?? []).map((row) => (
+              <li key={row.id} className="flex items-center gap-2 flex-wrap">
+                <span
+                  className={`font-mono ${
+                    row.active ? 'text-gray-800' : 'text-gray-400 line-through'
+                  }`}
+                >
+                  {row.barcode}
+                </span>
+                {row.isPrimary && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                    {tb.primaryTag}
+                  </span>
+                )}
+                {!row.active && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-600">
+                    {tb.hiddenTag}
+                  </span>
+                )}
+                <span className="text-gray-400">
+                  {tb.assignedStores.replace('{count}', String(row.assignedStores))}
+                </span>
+                <button
+                  onClick={() => setActive(row, !row.active)}
+                  disabled={busy}
+                  className={`px-2 py-0.5 rounded-md disabled:opacity-50 ${
+                    row.active
+                      ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      : 'bg-green-50 text-green-700 hover:bg-green-100'
+                  }`}
+                >
+                  {row.active ? tb.hide : tb.restore}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="flex items-center gap-2 mt-2">
+            <input
+              type="text"
+              value={newBarcode}
+              onChange={(e) => setNewBarcode(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void addBarcode()
+              }}
+              placeholder={tb.addPlaceholder}
+              className="w-32 rounded-md border border-gray-300 px-2 py-1 focus:border-primary focus:outline-none"
+            />
+            <button
+              onClick={() => void addBarcode()}
+              disabled={busy || !newBarcode.trim()}
+              className="px-3 py-1 rounded-md bg-primary text-white font-semibold disabled:opacity-50"
+            >
+              {busy ? tb.adding : tb.add}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
   )
 }
 
