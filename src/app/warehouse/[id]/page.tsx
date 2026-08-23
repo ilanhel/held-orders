@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, use } from 'react'
+import { useEffect, useMemo, useRef, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { i18n, type OrderStatusKey } from '@/lib/i18n'
 import { formatPrice, formatTotal } from '@/lib/format'
@@ -83,23 +83,88 @@ export default function WarehouseOrderPage({
     ).length
   }, [order])
 
-  async function updateItem(item: OrderItem, qtySupplied: number, picked: boolean) {
-    setBusy(true)
-    setError(null)
+  // Optimistic item updates: patch local state immediately, debounce the PUT
+  // per item, and never disable the row controls while a save is in flight —
+  // otherwise quick taps on +/- get swallowed on slow warehouse wifi.
+  const pendingRef = useRef(new Map<string, { qtySupplied: number; picked: boolean }>())
+  const timersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>())
+  const chainsRef = useRef(new Map<string, Promise<void>>())
+
+  function applyPending(serverOrder: Order): Order {
+    const pending = pendingRef.current
+    if (pending.size === 0) return serverOrder
+    return {
+      ...serverOrder,
+      items: serverOrder.items.map((i) =>
+        pending.has(i.id) ? { ...i, ...pending.get(i.id)! } : i
+      ),
+    }
+  }
+
+  function changeItem(item: OrderItem, qtySupplied: number, picked: boolean) {
+    setOrder((prev) =>
+      prev
+        ? {
+            ...prev,
+            items: prev.items.map((i) =>
+              i.id === item.id ? { ...i, qtySupplied, picked } : i
+            ),
+          }
+        : prev
+    )
+    pendingRef.current.set(item.id, { qtySupplied, picked })
+    const timers = timersRef.current
+    const existing = timers.get(item.id)
+    if (existing) clearTimeout(existing)
+    timers.set(
+      item.id,
+      setTimeout(() => {
+        timers.delete(item.id)
+        queueSync(item.id)
+      }, 300)
+    )
+  }
+
+  function queueSync(itemId: string) {
+    const chain = chainsRef.current.get(itemId) ?? Promise.resolve()
+    chainsRef.current.set(
+      itemId,
+      chain.then(() => doSync(itemId))
+    )
+  }
+
+  async function doSync(itemId: string) {
+    const payload = pendingRef.current.get(itemId)
+    if (!payload) return
+    pendingRef.current.delete(itemId)
     try {
-      const res = await fetch(`/api/orders/${id}/items/${item.id}`, {
+      const res = await fetch(`/api/orders/${id}/items/${itemId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ qtySupplied, picked }),
+        body: JSON.stringify(payload),
       })
       const data = await res.json()
-      if (!res.ok) setError(data?.error?.message ?? i18n.errors.serverError)
-      else setOrder(data.order)
+      if (!res.ok) {
+        setError(data?.error?.message ?? i18n.errors.serverError)
+        await load() // refetch server truth after a rejected update
+      } else {
+        setOrder(applyPending(data.order))
+      }
     } catch {
       setError(i18n.errors.network)
-    } finally {
-      setBusy(false)
     }
+  }
+
+  async function flushPending() {
+    for (const itemId of [...pendingRef.current.keys()]) {
+      const timer = timersRef.current.get(itemId)
+      if (timer) {
+        clearTimeout(timer)
+        timersRef.current.delete(itemId)
+        queueSync(itemId)
+      }
+    }
+    await Promise.all([...chainsRef.current.values()])
   }
 
   async function transitionTo(status: OrderStatusKey) {
@@ -107,6 +172,7 @@ export default function WarehouseOrderPage({
     setError(null)
     setInfo(null)
     try {
+      await flushPending()
       const res = await fetch(`/api/orders/${id}/status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -133,6 +199,7 @@ export default function WarehouseOrderPage({
     setError(null)
     setInfo(null)
     try {
+      await flushPending()
       const res = await fetch(`/api/orders/${id}/finish-picking`, { method: 'POST' })
       const data = await res.json()
       if (!res.ok) {
@@ -213,8 +280,8 @@ export default function WarehouseOrderPage({
             <PickRow
               key={item.id}
               item={item}
-              disabled={busy || !isPickable}
-              onUpdate={(qty, picked) => updateItem(item, qty, picked)}
+              disabled={!isPickable}
+              onUpdate={(qty, picked) => changeItem(item, qty, picked)}
             />
           ))}
         </ul>
@@ -320,6 +387,8 @@ function PickRow({
 }) {
   const supplied = item.qtySupplied ?? item.qtyOrdered
   const isPartial = item.qtySupplied !== null && item.qtySupplied < item.qtyOrdered
+  // Local draft so the field can be cleared/typed into freely; null = follow `supplied`.
+  const [draft, setDraft] = useState<string | null>(null)
 
   return (
     <li
@@ -357,33 +426,44 @@ function PickRow({
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-600">{i18n.warehouse.pick.qtySupplied}</span>
           <button
-            onClick={() => onUpdate(Math.max(0, supplied - 1), true)}
+            onClick={() => {
+              setDraft(null)
+              onUpdate(Math.max(0, supplied - 1), true)
+            }}
             disabled={disabled || supplied <= 0}
-            className="w-9 h-9 rounded-lg border border-gray-300 text-xl font-bold text-gray-700 disabled:opacity-40"
+            className="w-11 h-11 rounded-lg border border-gray-300 text-xl font-bold text-gray-700 disabled:opacity-40 active:bg-gray-100"
             aria-label="−"
           >
             −
           </button>
           <input
-            type="number"
+            type="text"
             inputMode="numeric"
-            min={0}
-            max={item.qtyOrdered}
-            value={supplied}
+            pattern="[0-9]*"
+            value={draft ?? String(supplied)}
+            onFocus={(e) => e.target.select()}
             onChange={(e) => {
-              const n = Math.max(
-                0,
-                Math.min(item.qtyOrdered, parseInt(e.target.value || '0', 10))
-              )
+              const raw = e.target.value.replace(/[^0-9]/g, '')
+              if (raw === '') {
+                // Let the user clear the field while typing — don't commit yet.
+                setDraft('')
+                return
+              }
+              const n = Math.max(0, Math.min(item.qtyOrdered, parseInt(raw, 10)))
+              setDraft(String(n))
               onUpdate(n, true)
             }}
+            onBlur={() => setDraft(null)}
             disabled={disabled}
-            className="w-16 h-9 px-1 border border-gray-300 rounded-lg text-center text-lg font-semibold"
+            className="w-16 h-11 px-1 border border-gray-300 rounded-lg text-center text-lg font-semibold"
           />
           <button
-            onClick={() => onUpdate(Math.min(item.qtyOrdered, supplied + 1), true)}
+            onClick={() => {
+              setDraft(null)
+              onUpdate(Math.min(item.qtyOrdered, supplied + 1), true)
+            }}
             disabled={disabled || supplied >= item.qtyOrdered}
-            className="w-9 h-9 rounded-lg border border-gray-300 text-xl font-bold text-gray-700 disabled:opacity-40"
+            className="w-11 h-11 rounded-lg border border-gray-300 text-xl font-bold text-gray-700 disabled:opacity-40 active:bg-gray-100"
             aria-label="+"
           >
             +
