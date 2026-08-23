@@ -10,6 +10,7 @@ export interface CatalogProduct {
   categoryId: string
   priceAgorot: number
   imagePath: string | null
+  orderNote: string | null
   status: ProductStatus
 }
 
@@ -317,7 +318,13 @@ export class CatalogService {
    */
   static async updateProduct(
     id: string,
-    input: { name?: string; barcode?: string; categoryId?: string; status?: ProductStatus }
+    input: {
+      name?: string
+      barcode?: string
+      categoryId?: string
+      status?: ProductStatus
+      orderNote?: string | null
+    }
   ): Promise<AdminProduct> {
     const product = await prisma.product.findUnique({ where: { id } })
     if (!product) throw new Error('PRODUCT_NOT_FOUND')
@@ -350,6 +357,9 @@ export class CatalogService {
         ...(barcode !== undefined ? { barcode } : {}),
         ...(input.categoryId !== undefined ? { categoryId: input.categoryId } : {}),
         ...(input.status !== undefined ? { status: input.status } : {}),
+        ...(input.orderNote !== undefined
+          ? { orderNote: input.orderNote?.trim() || null }
+          : {}),
       },
       include: { category: { select: { name: true } } },
     })
@@ -613,6 +623,7 @@ export class CatalogService {
     categoryId: string
     priceAgorot: number
     imagePath: string | null
+    orderNote: string | null
     status: ProductStatus
   }): CatalogProduct {    return {
       id: p.id,
@@ -621,6 +632,7 @@ export class CatalogService {
       categoryId: p.categoryId,
       priceAgorot: p.priceAgorot,
       imagePath: p.imagePath,
+      orderNote: p.orderNote,
       status: p.status,
     }
   }

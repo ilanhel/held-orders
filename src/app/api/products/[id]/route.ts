@@ -10,6 +10,7 @@ const updateSchema = z.object({
   barcode: z.string().min(1).max(64).optional(),
   categoryId: z.string().min(1).optional(),
   status: z.nativeEnum(ProductStatus).optional(),
+  orderNote: z.string().max(200).nullable().optional(),
 })
 
 function authError(error: string | null) {

@@ -98,9 +98,41 @@ export default function OrderDetailPage({
       </header>
 
       {submittedFlag && (
-        <div className="mx-4 mt-4 p-4 bg-green-50 border border-green-200 text-green-800 rounded-lg text-center">
-          ✓ {i18n.orders.submittedSuccess}
-        </div>
+        <section className="px-4 pt-6">
+          <div className="bg-white rounded-2xl border border-green-200 shadow-sm p-6 text-center">
+            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-green-100">
+              <svg
+                className="h-11 w-11 text-green-600"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900">
+              {i18n.orders.submittedSuccess}
+            </h2>
+            <p className="mt-1 text-gray-500">{i18n.orders.submittedSubtitle}</p>
+            <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-green-50 px-4 py-1.5 text-green-800 font-semibold">
+              {i18n.orders.orderNumber} #{order.number ?? '—'} · {order.items.length}{' '}
+              {i18n.orders.items}
+            </div>
+            <p className="mt-4 text-sm text-gray-400">
+              {i18n.orders.submittedWhatsapp}
+            </p>
+            <button
+              onClick={() => router.push('/catalog')}
+              className="mt-6 w-full bg-primary text-white font-semibold py-4 rounded-lg active:bg-red-700 text-lg"
+            >
+              {i18n.orders.backToCatalog}
+            </button>
+          </div>
+        </section>
       )}
 
       <section className="px-4 pt-4">

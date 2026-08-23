@@ -243,6 +243,21 @@ describe('CatalogService admin management', () => {
         CatalogService.updateProduct(existing!.id, { barcode: '   ' })
       ).rejects.toThrow('INVALID_BARCODE')
     })
+
+    it('sets and clears the order note, and exposes it in the catalog', async () => {
+      const existing = await prisma.product.findUnique({ where: { barcode: '7290000020001' } })
+      const updated = await CatalogService.updateProduct(existing!.id, {
+        orderNote: ' הזמנה בארגזים של 36 יחידות ',
+      })
+      expect(updated.orderNote).toBe('הזמנה בארגזים של 36 יחידות')
+
+      const catalog = await CatalogService.getCatalog()
+      const product = catalog.flatMap((c) => c.products).find((p) => p.id === existing!.id)
+      expect(product?.orderNote).toBe('הזמנה בארגזים של 36 יחידות')
+
+      const cleared = await CatalogService.updateProduct(existing!.id, { orderNote: '' })
+      expect(cleared.orderNote).toBeNull()
+    })
   })
 
   describe('setPrice', () => {

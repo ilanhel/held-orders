@@ -17,6 +17,7 @@ type Product = {
   stockQty: number
   trackStock: boolean
   imagePath: string | null
+  orderNote: string | null
 }
 
 type Category = { id: string; name: string; sortOrder: number }
@@ -226,7 +227,7 @@ export default function AdminCatalogPage() {
 
   async function saveDetails(
     p: Product,
-    input: { name: string; barcode: string; categoryId: string }
+    input: { name: string; barcode: string; categoryId: string; orderNote: string | null }
   ): Promise<boolean> {
     setBusyId(p.id)
     setError(null)
@@ -251,6 +252,7 @@ export default function AdminCatalogPage() {
                 barcode: updated.barcode,
                 categoryId: updated.categoryId,
                 categoryName: updated.categoryName,
+                orderNote: updated.orderNote,
               }
             : x
         )
@@ -1025,17 +1027,28 @@ function EditProductForm({
   categories: Category[]
   disabled: boolean
   onCancel: () => void
-  onSave: (input: { name: string; barcode: string; categoryId: string }) => void
+  onSave: (input: {
+    name: string
+    barcode: string
+    categoryId: string
+    orderNote: string | null
+  }) => void
 }) {
   const [name, setName] = useState(product.name)
   const [barcode, setBarcode] = useState(product.barcode)
   const [categoryId, setCategoryId] = useState(product.categoryId)
+  const [orderNote, setOrderNote] = useState(product.orderNote ?? '')
 
   const valid = name.trim() && barcode.trim() && categoryId
 
   function submit() {
     if (!valid || disabled) return
-    onSave({ name: name.trim(), barcode: barcode.trim(), categoryId })
+    onSave({
+      name: name.trim(),
+      barcode: barcode.trim(),
+      categoryId,
+      orderNote: orderNote.trim() || null,
+    })
   }
 
   return (
@@ -1074,6 +1087,17 @@ function EditProductForm({
               </option>
             ))}
           </select>
+        </label>
+        <label className="block sm:col-span-3">
+          <span className="text-xs text-gray-500">{t.orderNote}</span>
+          <input
+            value={orderNote}
+            disabled={disabled}
+            maxLength={200}
+            placeholder={t.orderNotePlaceholder}
+            onChange={(e) => setOrderNote(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none disabled:opacity-50"
+          />
         </label>
       </div>
       <div className="flex gap-2 mt-4">

@@ -67,6 +67,7 @@ model Product {
   category        Category      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   priceAgorot     Int
   imagePath       String?
+  orderNote       String?
   status          ProductStatus @default(ACTIVE)
   stockQty        Int           @default(0)
   trackStock      Boolean       @default(false)

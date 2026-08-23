@@ -18,6 +18,7 @@ type Product = {
   categoryId: string
   priceAgorot: number
   imagePath: string | null
+  orderNote: string | null
   status: 'ACTIVE' | 'OUT_OF_STOCK' | 'HIDDEN'
 }
 
@@ -515,6 +516,11 @@ function ProductCard({
       <div className="text-sm font-semibold text-gray-900 leading-snug mb-1 min-h-[2.5rem] break-words">
         {product.name}
       </div>
+      {product.orderNote && (
+        <div className="text-xs font-bold text-red-700 bg-red-50 border border-red-200 rounded-md px-2 py-1 leading-snug mb-1 break-words">
+          {product.orderNote}
+        </div>
+      )}
       <div className="text-xs text-gray-400 font-mono mb-2 truncate" dir="ltr">
         {product.barcode}
       </div>

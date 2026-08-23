@@ -4,6 +4,7 @@
  */
 export type NotificationEvent =
   | { type: 'ORDER_SUBMITTED'; orderNumber: number; storeName: string; totalAgorot: number; itemCount: number }
+  | { type: 'ORDER_CONFIRMATION'; orderNumber: number; totalAgorot: number; itemCount: number }
   | { type: 'ORDER_RECEIVED'; orderNumber: number }
   | { type: 'ORDER_PICKING'; orderNumber: number }
   | { type: 'ORDER_READY'; orderNumber: number }

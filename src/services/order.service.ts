@@ -239,6 +239,18 @@ export class OrderService {
         },
         warehouseRecipients.map((u) => ({ phone: u.phone, name: u.name }))
       )
+
+      // Confirm to the franchisees of the store that their order went through
+      const storeRecipients = await this.storeRecipients(view.storeId)
+      await NotificationService.broadcast(
+        {
+          type: 'ORDER_CONFIRMATION',
+          orderNumber: view.number,
+          totalAgorot: view.totalAgorot,
+          itemCount: view.items.length,
+        },
+        storeRecipients
+      )
     }
 
     return view

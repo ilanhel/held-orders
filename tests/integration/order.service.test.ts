@@ -333,9 +333,23 @@ describe('OrderService', () => {
       await OrderService.setItemQty(d.id, prodA.id, 2)
       await OrderService.submitDraft(d.id, userId)
 
-      expect(notifications.sent).toHaveLength(1)
-      expect(notifications.sent[0].event.type).toBe('ORDER_SUBMITTED')
-      expect(notifications.sent[0].recipient.phone).toBe('0552222222')
+      const warehouseNotes = notifications.sent.filter(
+        (n) => n.event.type === 'ORDER_SUBMITTED'
+      )
+      expect(warehouseNotes).toHaveLength(1)
+      expect(warehouseNotes[0].recipient.phone).toBe('0552222222')
+    })
+
+    it('confirms to the franchisee on submit', async () => {
+      const d = await OrderService.getOrCreateDraft(storeId, userId)
+      await OrderService.setItemQty(d.id, prodA.id, 2)
+      await OrderService.submitDraft(d.id, userId)
+
+      const confirmations = notifications.sent.filter(
+        (n) => n.event.type === 'ORDER_CONFIRMATION'
+      )
+      expect(confirmations).toHaveLength(1)
+      expect(confirmations[0].recipient.phone).toBe('0551111111')
     })
   })
 
