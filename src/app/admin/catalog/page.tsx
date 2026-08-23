@@ -18,6 +18,7 @@ type Product = {
   trackStock: boolean
   imagePath: string | null
   orderNote: string | null
+  groupName: string | null
 }
 
 type Category = { id: string; name: string; sortOrder: number }
@@ -227,7 +228,13 @@ export default function AdminCatalogPage() {
 
   async function saveDetails(
     p: Product,
-    input: { name: string; barcode: string; categoryId: string; orderNote: string | null }
+    input: {
+      name: string
+      barcode: string
+      categoryId: string
+      orderNote: string | null
+      groupName: string | null
+    }
   ): Promise<boolean> {
     setBusyId(p.id)
     setError(null)
@@ -253,6 +260,7 @@ export default function AdminCatalogPage() {
                 categoryId: updated.categoryId,
                 categoryName: updated.categoryName,
                 orderNote: updated.orderNote,
+                groupName: updated.groupName,
               }
             : x
         )
@@ -1032,12 +1040,14 @@ function EditProductForm({
     barcode: string
     categoryId: string
     orderNote: string | null
+    groupName: string | null
   }) => void
 }) {
   const [name, setName] = useState(product.name)
   const [barcode, setBarcode] = useState(product.barcode)
   const [categoryId, setCategoryId] = useState(product.categoryId)
   const [orderNote, setOrderNote] = useState(product.orderNote ?? '')
+  const [groupName, setGroupName] = useState(product.groupName ?? '')
 
   const valid = name.trim() && barcode.trim() && categoryId
 
@@ -1048,6 +1058,7 @@ function EditProductForm({
       barcode: barcode.trim(),
       categoryId,
       orderNote: orderNote.trim() || null,
+      groupName: groupName.trim() || null,
     })
   }
 
@@ -1096,6 +1107,17 @@ function EditProductForm({
             maxLength={200}
             placeholder={t.orderNotePlaceholder}
             onChange={(e) => setOrderNote(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none disabled:opacity-50"
+          />
+        </label>
+        <label className="block sm:col-span-3">
+          <span className="text-xs text-gray-500">{t.groupName}</span>
+          <input
+            value={groupName}
+            disabled={disabled}
+            maxLength={120}
+            placeholder={t.groupNamePlaceholder}
+            onChange={(e) => setGroupName(e.target.value)}
             className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none disabled:opacity-50"
           />
         </label>

@@ -258,6 +258,21 @@ describe('CatalogService admin management', () => {
       const cleared = await CatalogService.updateProduct(existing!.id, { orderNote: '' })
       expect(cleared.orderNote).toBeNull()
     })
+
+    it('sets and clears the group name, and exposes it in the catalog', async () => {
+      const existing = await prisma.product.findUnique({ where: { barcode: '7290000020001' } })
+      const updated = await CatalogService.updateProduct(existing!.id, {
+        groupName: ' בלוק עץ ',
+      })
+      expect(updated.groupName).toBe('בלוק עץ')
+
+      const catalog = await CatalogService.getCatalog()
+      const product = catalog.flatMap((c) => c.products).find((p) => p.id === existing!.id)
+      expect(product?.groupName).toBe('בלוק עץ')
+
+      const cleared = await CatalogService.updateProduct(existing!.id, { groupName: null })
+      expect(cleared.groupName).toBeNull()
+    })
   })
 
   describe('setPrice', () => {

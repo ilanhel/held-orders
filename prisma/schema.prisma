@@ -68,6 +68,7 @@ model Product {
   priceAgorot     Int
   imagePath       String?
   orderNote       String?
+  groupName       String?
   status          ProductStatus @default(ACTIVE)
   stockQty        Int           @default(0)
   trackStock      Boolean       @default(false)

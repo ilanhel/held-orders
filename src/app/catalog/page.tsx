@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { i18n } from '@/lib/i18n'
 import { AnnouncementBanner } from '@/components/AnnouncementBanner'
@@ -19,7 +19,66 @@ type Product = {
   priceAgorot: number
   imagePath: string | null
   orderNote: string | null
+  groupName: string | null
   status: 'ACTIVE' | 'OUT_OF_STOCK' | 'HIDDEN'
+}
+
+type ProductGroup = { name: string; products: Product[] }
+
+type CatalogEntry =
+  | { key: string; product: Product; group?: undefined }
+  | { key: string; group: ProductGroup; product?: undefined }
+
+// Collapse products sharing a groupName into a single expandable entry,
+// keeping the group at the position of its first product. Groups with a
+// single visible product fall back to a plain card.
+function buildEntries(products: Product[]): CatalogEntry[] {
+  const entries: CatalogEntry[] = []
+  const groupIndex = new Map<string, number>()
+  for (const p of products) {
+    const g = p.groupName?.trim()
+    if (!g) {
+      entries.push({ key: p.id, product: p })
+      continue
+    }
+    const idx = groupIndex.get(g)
+    if (idx === undefined) {
+      groupIndex.set(g, entries.length)
+      entries.push({ key: `group-${g}`, group: { name: g, products: [p] } })
+    } else {
+      const entry = entries[idx]
+      if (entry.group) entry.group.products.push(p)
+    }
+  }
+  return entries.map((e) =>
+    e.group && e.group.products.length === 1
+      ? { key: e.group.products[0].id, product: e.group.products[0] }
+      : e
+  )
+}
+
+// The variant label is the product name minus the group name prefix
+// (e.g. "ספל לבן פנים וידית בצבע אדום" → "אדום").
+function variantLabel(name: string, groupName: string): string {
+  const n = name.trim()
+  const g = groupName.trim()
+  if (n.toLowerCase().startsWith(g.toLowerCase())) {
+    const rest = n.slice(g.length).trim()
+    if (rest) return rest
+  }
+  return n
+}
+
+// Order variants naturally: shirt sizes S→XXXL, then numeric-aware Hebrew
+// compare (so "מידה 2" sorts before "מידה 10").
+const SHIRT_SIZE_ORDER = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL']
+function compareVariants(a: Product, b: Product, groupName: string): number {
+  const la = variantLabel(a.name, groupName)
+  const lb = variantLabel(b.name, groupName)
+  const sa = SHIRT_SIZE_ORDER.indexOf(la.replace('מידה', '').trim().toUpperCase())
+  const sb = SHIRT_SIZE_ORDER.indexOf(lb.replace('מידה', '').trim().toUpperCase())
+  if (sa !== -1 && sb !== -1) return sa - sb
+  return la.localeCompare(lb, 'he', { numeric: true })
 }
 
 type Category = {
@@ -55,6 +114,7 @@ export default function CatalogPage() {
   const [searchResults, setSearchResults] = useState<Product[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null)
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set())
   const [reordering, setReordering] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [pendingSync, setPendingSync] = useState(false)
@@ -274,6 +334,15 @@ export default function CatalogPage() {
     }
   }
 
+  function toggleGroup(key: string) {
+    setOpenGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
   async function logout() {
     await fetch('/api/auth/logout', { method: 'POST' })
     router.push('/login')
@@ -449,14 +518,69 @@ export default function CatalogPage() {
               <p className="text-gray-500 text-sm">{i18n.catalog.noProducts}</p>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                {c.products.map((p) => (
-                  <ProductCard
-                    key={p.id}
-                    product={p}
-                    qty={cartMap.get(p.id) ?? 0}
-                    onChange={(q) => changeQty(p.id, q)}
-                  />
-                ))}
+                {buildEntries(c.products).map((entry) => {
+                  if (entry.product) {
+                    const p = entry.product
+                    return (
+                      <ProductCard
+                        key={entry.key}
+                        product={p}
+                        qty={cartMap.get(p.id) ?? 0}
+                        onChange={(q) => changeQty(p.id, q)}
+                      />
+                    )
+                  }
+                  const group = entry.group
+                  const groupKey = `${c.id}|${group.name}`
+                  const open = openGroups.has(groupKey)
+                  const groupQty = group.products.reduce(
+                    (s, p) => s + (cartMap.get(p.id) ?? 0),
+                    0
+                  )
+                  const notes = new Set(
+                    group.products.map((p) => p.orderNote).filter(Boolean)
+                  )
+                  const sharedNote =
+                    notes.size === 1 && group.products.every((p) => p.orderNote)
+                      ? group.products[0].orderNote
+                      : null
+                  return (
+                    <Fragment key={entry.key}>
+                      <GroupCard
+                        group={group}
+                        totalQty={groupQty}
+                        open={open}
+                        onToggle={() => toggleGroup(groupKey)}
+                      />
+                      {open && (
+                        <div className="col-span-full bg-white rounded-xl border border-primary/40 overflow-hidden">
+                          <div className="px-3 py-2 bg-gray-50 border-b border-gray-200 text-sm font-bold text-gray-800">
+                            {group.name}
+                          </div>
+                          {sharedNote && (
+                            <div className="px-3 py-2 text-xs font-bold text-red-700 bg-red-50 border-b border-red-100">
+                              {sharedNote}
+                            </div>
+                          )}
+                          <div className="divide-y divide-gray-100">
+                            {[...group.products]
+                              .sort((a, b) => compareVariants(a, b, group.name))
+                              .map((p) => (
+                                <VariantRow
+                                  key={p.id}
+                                  product={p}
+                                  groupName={group.name}
+                                  showNote={!sharedNote}
+                                  qty={cartMap.get(p.id) ?? 0}
+                                  onChange={(q) => changeQty(p.id, q)}
+                                />
+                              ))}
+                          </div>
+                        </div>
+                      )}
+                    </Fragment>
+                  )
+                })}
               </div>
             )}
           </section>
@@ -526,6 +650,110 @@ function ProductCard({
       </div>
       <div className="mt-auto">
         <QtyStepper qty={qty} onChange={onChange} disabled={isOOS} />
+      </div>
+    </div>
+  )
+}
+
+function GroupCard({
+  group,
+  totalQty,
+  open,
+  onToggle,
+}: {
+  group: ProductGroup
+  totalQty: number
+  open: boolean
+  onToggle: () => void
+}) {
+  const image = group.products.find((p) => p.imagePath)?.imagePath ?? null
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      className={`bg-white rounded-xl border p-3 flex flex-col text-right ${
+        open ? 'border-primary ring-1 ring-primary' : 'border-gray-200'
+      }`}
+    >
+      <div className="aspect-square bg-gray-100 rounded-lg mb-2 flex items-center justify-center overflow-hidden relative">
+        {image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={image}
+            alt={group.name}
+            loading="lazy"
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <span className="text-gray-300 text-3xl">📦</span>
+        )}
+        {totalQty > 0 && (
+          <span className="absolute top-2 right-2 bg-primary text-white text-xs font-bold px-2 py-0.5 rounded-full">
+            {totalQty}
+          </span>
+        )}
+      </div>
+      <div className="text-sm font-semibold text-gray-900 leading-snug mb-1 min-h-[2.5rem] break-words">
+        {group.name}
+      </div>
+      <div className="mt-auto flex items-center justify-between text-primary text-sm font-semibold">
+        <span>
+          {group.products.length} {i18n.catalog.variants}
+        </span>
+        <span aria-hidden="true">{open ? '▲' : '▼'}</span>
+      </div>
+    </button>
+  )
+}
+
+function VariantRow({
+  product,
+  groupName,
+  showNote,
+  qty,
+  onChange,
+}: {
+  product: Product
+  groupName: string
+  showNote: boolean
+  qty: number
+  onChange: (qty: number) => void
+}) {
+  const isOOS = product.status === 'OUT_OF_STOCK'
+  return (
+    <div className="flex items-center gap-3 px-3 py-2">
+      <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
+        {product.imagePath ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={product.imagePath}
+            alt={product.name}
+            loading="lazy"
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <span className="text-gray-300 text-xl">📦</span>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-semibold text-gray-900 break-words">
+          {variantLabel(product.name, groupName)}
+        </div>
+        <div className="text-xs text-gray-400 font-mono truncate" dir="ltr">
+          {product.barcode}
+        </div>
+        {showNote && product.orderNote && (
+          <div className="text-xs font-bold text-red-700">{product.orderNote}</div>
+        )}
+        {isOOS && (
+          <div className="text-xs text-gray-600 font-semibold">
+            {i18n.catalog.outOfStock}
+          </div>
+        )}
+      </div>
+      <div className="flex-shrink-0">
+        <QtyStepper qty={qty} onChange={onChange} disabled={isOOS} size="sm" />
       </div>
     </div>
   )

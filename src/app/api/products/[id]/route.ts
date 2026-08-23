@@ -11,6 +11,7 @@ const updateSchema = z.object({
   categoryId: z.string().min(1).optional(),
   status: z.nativeEnum(ProductStatus).optional(),
   orderNote: z.string().max(200).nullable().optional(),
+  groupName: z.string().max(120).nullable().optional(),
 })
 
 function authError(error: string | null) {

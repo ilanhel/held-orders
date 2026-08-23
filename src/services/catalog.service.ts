@@ -11,6 +11,7 @@ export interface CatalogProduct {
   priceAgorot: number
   imagePath: string | null
   orderNote: string | null
+  groupName: string | null
   status: ProductStatus
 }
 
@@ -324,6 +325,7 @@ export class CatalogService {
       categoryId?: string
       status?: ProductStatus
       orderNote?: string | null
+      groupName?: string | null
     }
   ): Promise<AdminProduct> {
     const product = await prisma.product.findUnique({ where: { id } })
@@ -359,6 +361,9 @@ export class CatalogService {
         ...(input.status !== undefined ? { status: input.status } : {}),
         ...(input.orderNote !== undefined
           ? { orderNote: input.orderNote?.trim() || null }
+          : {}),
+        ...(input.groupName !== undefined
+          ? { groupName: input.groupName?.trim() || null }
           : {}),
       },
       include: { category: { select: { name: true } } },
@@ -624,6 +629,7 @@ export class CatalogService {
     priceAgorot: number
     imagePath: string | null
     orderNote: string | null
+    groupName: string | null
     status: ProductStatus
   }): CatalogProduct {    return {
       id: p.id,
@@ -633,6 +639,7 @@ export class CatalogService {
       priceAgorot: p.priceAgorot,
       imagePath: p.imagePath,
       orderNote: p.orderNote,
+      groupName: p.groupName,
       status: p.status,
     }
   }

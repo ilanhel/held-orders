@@ -53,6 +53,8 @@ export const i18n = {
     decreaseQty: 'הפחת כמות',
     increaseQty: 'הוסף כמות',
     quantity: 'כמות',
+    variants: 'אפשרויות',
+    chooseVariant: 'לחצו לבחירת גודל / צבע',
   },
   scan: {
     title: 'סריקה וזיהוי',
@@ -298,6 +300,8 @@ export const i18n = {
       category: 'קטגוריה',
       orderNote: 'הערת הזמנה (מוצגת מודגשת בקטלוג)',
       orderNotePlaceholder: 'למשל: הזמנה בארגזים של 36 יחידות',
+      groupName: 'שם קבוצה (מוצרים עם אותו שם מקובצים בקטלוג)',
+      groupNamePlaceholder: 'למשל: חולצת סובלימציה ילדים',
       price: 'מחיר (₪)',
       status: 'סטטוס',
       save: 'שמירה',
