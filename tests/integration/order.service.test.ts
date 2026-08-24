@@ -354,7 +354,7 @@ describe('OrderService', () => {
   })
 
   describe('getWarehouseQueue', () => {
-    it('returns active orders oldest-first, excludes DRAFT/SHIPPED/CANCELLED', async () => {
+    it('returns active orders newest-first, excludes DRAFT/SHIPPED/CANCELLED', async () => {
       // Submitted order
       const d1 = await OrderService.getOrCreateDraft(storeId, userId)
       await OrderService.setItemQty(d1.id, prodA.id, 1)

@@ -417,7 +417,8 @@ export class OrderService {
   }
 
   /**
-   * Warehouse queue: all non-DRAFT, non-terminal orders, oldest first.
+   * Warehouse queue: all non-DRAFT, non-terminal orders, newest first
+   * (the iPad shows the latest incoming order at the top).
    */
   static async getWarehouseQueue(limit = 100): Promise<OrderView[]> {
     const orders = await prisma.order.findMany({
@@ -431,7 +432,7 @@ export class OrderService {
           ],
         },
       },
-      orderBy: { submittedAt: 'asc' },
+      orderBy: { submittedAt: 'desc' },
       take: limit,
       include: {
         store: true,

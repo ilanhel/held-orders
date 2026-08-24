@@ -54,8 +54,19 @@ export default function WarehousePage() {
 
   useEffect(() => {
     void load()
-    const t = setInterval(load, 30_000) // light polling for new orders
-    return () => clearInterval(t)
+    // Push-like freshness without manual refresh: poll every 10s, and reload
+    // immediately when the iPad wakes up / returns to the tab.
+    const t = setInterval(load, 10_000)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void load()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    return () => {
+      clearInterval(t)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
