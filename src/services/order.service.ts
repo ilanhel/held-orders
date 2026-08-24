@@ -1,4 +1,4 @@
-import { PrismaClient, OrderStatus, ProductStatus, Role } from '@prisma/client'
+import { PrismaClient, OrderStatus, ProductStatus, Role, Prisma } from '@prisma/client'
 import { NotificationService } from './notifications'
 import { CatalogService } from './catalog.service'
 import { OrderExportService } from './export.service'
@@ -174,45 +174,57 @@ export class OrderService {
     })
     const nextNumber = (lastOrder?.number ?? 1000) + 1
 
-    // Resolve per-store barcode for multi-barcode products (sticky + balanced)
+    // Resolve per-store barcode for multi-barcode products (sticky + balanced).
+    // Only products that actually have barcode aliases are resolved — large
+    // orders would otherwise fire one query per line and time out on Vercel.
+    const aliasCounts = await prisma.productBarcodeAlias.groupBy({
+      by: ['productId'],
+      where: { productId: { in: productIds } },
+      _count: { _all: true },
+    })
+    const multiBarcodeIds = aliasCounts
+      .filter((a) => a._count._all >= 2)
+      .map((a) => a.productId)
     const assignedBarcodes = new Map<string, string>()
-    for (const productId of productIds) {
+    for (const productId of multiBarcodeIds) {
       const assigned = await this.resolveStoreBarcode(order.storeId, productId)
       if (assigned) assignedBarcodes.set(productId, assigned)
     }
 
-    await prisma.$transaction(async (tx) => {
-      // Update each item's price/name from current product
-      for (const item of order.items) {
-        const p = productMap.get(item.productId)!
-        await tx.orderItem.update({
-          where: { id: item.id },
-          data: {
-            priceAgorot: p.priceAgorot,
-            productName: p.name,
-            productBarcode: assignedBarcodes.get(item.productId) ?? p.barcode,
-          },
-        })
-      }
-
-      await tx.order.update({
+    // Re-snapshot all lines in a single statement — updating 80+ items one by
+    // one inside an interactive transaction exceeds its 5s timeout on Neon.
+    const itemValues = order.items.map((item) => {
+      const p = productMap.get(item.productId)!
+      return Prisma.sql`(${item.id}, ${p.priceAgorot}::int, ${p.name}::text, ${
+        assignedBarcodes.get(item.productId) ?? p.barcode
+      }::text)`
+    })
+    await prisma.$transaction([
+      prisma.$executeRaw`
+        UPDATE "OrderItem" AS oi
+        SET "priceAgorot" = v.price,
+            "productName" = v.name,
+            "productBarcode" = v.barcode,
+            "updatedAt" = NOW()
+        FROM (VALUES ${Prisma.join(itemValues)}) AS v(id, price, name, barcode)
+        WHERE oi.id = v.id`,
+      prisma.order.update({
         where: { id: orderId },
         data: {
           number: nextNumber,
           status: OrderStatus.SUBMITTED,
           submittedAt: new Date(),
         },
-      })
-
-      await tx.orderStatusHistory.create({
+      }),
+      prisma.orderStatusHistory.create({
         data: {
           orderId,
           from: OrderStatus.DRAFT,
           to: OrderStatus.SUBMITTED,
           byUserId: userId,
         },
-      })
-    })
+      }),
+    ])
 
     const submitted = await prisma.order.findUnique({
       where: { id: orderId },

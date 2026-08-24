@@ -3,6 +3,10 @@ import { OrderService } from '@/services/order.service'
 import { requireSession } from '@/lib/session'
 import { i18n } from '@/lib/i18n'
 
+// Large orders (80+ lines) + WhatsApp notifications need headroom beyond the
+// default serverless duration.
+export const maxDuration = 60
+
 const errorStatus: Record<string, number> = {
   ORDER_NOT_FOUND: 404,
   ORDER_NOT_DRAFT: 409,
