@@ -536,7 +536,8 @@ function PickRow({
           <button
             onClick={() => {
               setDraft(null)
-              onUpdate(Math.max(0, supplied - 1), true)
+              // Qty changes never toggle picked — only the checkbox does.
+              onUpdate(Math.max(0, supplied - 1), item.picked)
             }}
             disabled={disabled || supplied <= 0}
             className="w-11 h-11 rounded-lg border border-gray-300 text-xl font-bold text-gray-700 disabled:opacity-40 active:bg-gray-100"
@@ -559,7 +560,7 @@ function PickRow({
               }
               const n = Math.max(0, Math.min(item.qtyOrdered, parseInt(raw, 10)))
               setDraft(String(n))
-              onUpdate(n, true)
+              onUpdate(n, item.picked)
             }}
             onBlur={() => setDraft(null)}
             disabled={disabled}
@@ -568,7 +569,7 @@ function PickRow({
           <button
             onClick={() => {
               setDraft(null)
-              onUpdate(Math.min(item.qtyOrdered, supplied + 1), true)
+              onUpdate(Math.min(item.qtyOrdered, supplied + 1), item.picked)
             }}
             disabled={disabled || supplied >= item.qtyOrdered}
             className="w-11 h-11 rounded-lg border border-gray-300 text-xl font-bold text-gray-700 disabled:opacity-40 active:bg-gray-100"
