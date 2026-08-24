@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs'
 import { PrismaClient } from '@prisma/client'
+import { pickRank } from '@/lib/pick-order'
 
 const prisma = new PrismaClient()
 
@@ -52,12 +53,13 @@ export class OrderExportService {
     })
     headerRow.height = 24
 
-    // Sort by category (picking order) then product name, but keep a single flat
-    // table — no group/separator rows — so the block pastes cleanly.
+    // Sort by the physical warehouse picking route (see src/lib/pick-order.ts)
+    // then product name, but keep a single flat table — no group/separator
+    // rows — so the block pastes cleanly.
     const items = [...order.items].sort((a, b) => {
-      const so = (a.product?.category?.sortOrder ?? 999) - (b.product?.category?.sortOrder ?? 999)
-      if (so !== 0) return so
-      return a.productName.localeCompare(b.productName, 'he')
+      const diff = pickRank(a.productName) - pickRank(b.productName)
+      if (diff !== 0) return diff
+      return a.productName.localeCompare(b.productName, 'he', { numeric: true })
     })
 
     let rowIdx = 2

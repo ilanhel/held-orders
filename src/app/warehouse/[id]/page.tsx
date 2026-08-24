@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { i18n, type OrderStatusKey } from '@/lib/i18n'
 import { formatPrice, formatTotal } from '@/lib/format'
+import { sortForPicking } from '@/lib/pick-order'
 
 type OrderItem = {
   id: string
@@ -276,7 +277,7 @@ export default function WarehouseOrderPage({
           {order.items.length} {i18n.orders.items}
         </h2>
         <ul className="space-y-2">
-          {order.items.map((item) => (
+          {sortForPicking(order.items).map((item) => (
             <PickRow
               key={item.id}
               item={item}
