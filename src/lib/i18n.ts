@@ -182,6 +182,9 @@ export const i18n = {
       shortagesSentTo: 'הודעת חוסרים נשלחה לזכיין',
       shortagesLabel: 'חוסרים',
       erpNotConfigured: 'לא הוגדר מספר וואטסאפ לקליטת ERP במערכת',
+      pickedSection: 'לוקטו',
+      remainingLabel: 'נשארו ללקט',
+      allPicked: 'הכל לוקט ✓',
     },
   },
   admin: {

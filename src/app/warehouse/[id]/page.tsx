@@ -49,6 +49,36 @@ export default function WarehouseOrderPage({
   // In-screen confirmation instead of window.confirm — iOS Safari/PWA can
   // silently suppress native confirm dialogs, making the button appear dead.
   const [confirming, setConfirming] = useState<'finish' | 'cancel' | null>(null)
+  // Picked rows drop to a collapsed "picked" section at the bottom — but only
+  // after a short hold, so the row doesn't jump away under the picker's hand.
+  const [heldIds, setHeldIds] = useState<Set<string>>(new Set())
+  const [showPicked, setShowPicked] = useState(false)
+  const holdTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>())
+
+  function holdInPlace(itemId: string) {
+    setHeldIds((prev) => new Set(prev).add(itemId))
+    const timers = holdTimersRef.current
+    const existing = timers.get(itemId)
+    if (existing) clearTimeout(existing)
+    timers.set(
+      itemId,
+      setTimeout(() => {
+        timers.delete(itemId)
+        setHeldIds((prev) => {
+          const next = new Set(prev)
+          next.delete(itemId)
+          return next
+        })
+      }, 2000)
+    )
+  }
+
+  useEffect(() => {
+    const timers = holdTimersRef.current
+    return () => {
+      for (const t of timers.values()) clearTimeout(t)
+    }
+  }, [])
 
   async function load() {
     try {
@@ -103,6 +133,9 @@ export default function WarehouseOrderPage({
   }
 
   function changeItem(item: OrderItem, qtySupplied: number, picked: boolean) {
+    // Newly picked rows stay in place briefly before dropping to the bottom
+    // section; un-picking brings the row back to the main list immediately.
+    if (picked && !item.picked) holdInPlace(item.id)
     setOrder((prev) =>
       prev
         ? {
@@ -273,19 +306,14 @@ export default function WarehouseOrderPage({
           </div>
         </div>
 
-        <h2 className="font-semibold text-gray-700 mb-2">
-          {order.items.length} {i18n.orders.items}
-        </h2>
-        <ul className="space-y-2">
-          {sortForPicking(order.items).map((item) => (
-            <PickRow
-              key={item.id}
-              item={item}
-              disabled={!isPickable}
-              onUpdate={(qty, picked) => changeItem(item, qty, picked)}
-            />
-          ))}
-        </ul>
+        <PickList
+          items={order.items}
+          heldIds={heldIds}
+          isPickable={!!isPickable}
+          showPicked={showPicked}
+          onToggleShowPicked={() => setShowPicked((v) => !v)}
+          onUpdate={changeItem}
+        />
       </section>
 
       <div className="sticky bottom-0 z-40 bg-white border-t border-gray-200 px-4 py-3 space-y-2 pb-safe shadow-lg">
@@ -377,13 +405,86 @@ export default function WarehouseOrderPage({
   )
 }
 
+function PickList({
+  items,
+  heldIds,
+  isPickable,
+  showPicked,
+  onToggleShowPicked,
+  onUpdate,
+}: {
+  items: OrderItem[]
+  heldIds: Set<string>
+  isPickable: boolean
+  showPicked: boolean
+  onToggleShowPicked: () => void
+  onUpdate: (item: OrderItem, qtySupplied: number, picked: boolean) => void
+}) {
+  const sorted = sortForPicking(items)
+  // A picked row is "settled" (moved to the bottom section) only after its
+  // short in-place hold expired.
+  const remaining = sorted.filter((i) => !i.picked || heldIds.has(i.id))
+  const settled = sorted.filter((i) => i.picked && !heldIds.has(i.id))
+
+  return (
+    <>
+      <h2 className="font-semibold text-gray-700 mb-2">
+        {settled.length > 0
+          ? remaining.length > 0
+            ? `${i18n.warehouse.pick.remainingLabel}: ${remaining.length} / ${items.length}`
+            : i18n.warehouse.pick.allPicked
+          : `${items.length} ${i18n.orders.items}`}
+      </h2>
+      <ul className="space-y-2">
+        {remaining.map((item) => (
+          <PickRow
+            key={item.id}
+            item={item}
+            disabled={!isPickable}
+            onUpdate={(qty, picked) => onUpdate(item, qty, picked)}
+          />
+        ))}
+      </ul>
+
+      {settled.length > 0 && (
+        <div className="mt-4">
+          <button
+            onClick={onToggleShowPicked}
+            className="w-full flex items-center justify-between bg-green-100 border border-green-300 rounded-xl px-4 py-3 text-green-900 font-semibold"
+          >
+            <span>
+              ✔ {i18n.warehouse.pick.pickedSection} ({settled.length})
+            </span>
+            <span className="text-green-700">{showPicked ? '▲' : '▼'}</span>
+          </button>
+          {showPicked && (
+            <ul className="space-y-2 mt-2 opacity-60">
+              {settled.map((item) => (
+                <PickRow
+                  key={item.id}
+                  item={item}
+                  disabled={!isPickable}
+                  dimmed
+                  onUpdate={(qty, picked) => onUpdate(item, qty, picked)}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </>
+  )
+}
+
 function PickRow({
   item,
   disabled,
+  dimmed = false,
   onUpdate,
 }: {
   item: OrderItem
   disabled: boolean
+  dimmed?: boolean
   onUpdate: (qtySupplied: number, picked: boolean) => void
 }) {
   const supplied = item.qtySupplied ?? item.qtyOrdered
@@ -411,7 +512,13 @@ function PickRow({
           {item.picked && '✓'}
         </button>
         <div className="flex-1 min-w-0">
-          <div className="font-semibold text-gray-900">{item.productName}</div>
+          <div
+            className={`font-semibold ${
+              dimmed ? 'text-gray-500 line-through decoration-green-600/60' : 'text-gray-900'
+            }`}
+          >
+            {item.productName}
+          </div>
           <div className="text-xs text-gray-400 font-mono mt-0.5" dir="ltr">
             {item.productBarcode}
           </div>
