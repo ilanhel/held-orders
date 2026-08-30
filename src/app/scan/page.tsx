@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { i18n } from '@/lib/i18n'
-import { formatPrice } from '@/lib/format'
 
 // Minimal typing for the (experimental) BarcodeDetector API.
 type DetectedBarcode = { rawValue: string }
@@ -335,7 +334,7 @@ export default function ScanPage() {
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold break-words">{m.product.name}</div>
                       <div className="text-xs text-gray-400" dir="ltr">
-                        {m.product.barcode} · {formatPrice(m.product.priceAgorot)}
+                        {m.product.barcode}
                       </div>
                       <div className="text-xs text-primary mt-0.5">
                         {i18n.scan.confidence}: {Math.round(m.confidence * 100)}%

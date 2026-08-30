@@ -130,6 +130,33 @@ describe('CatalogService', () => {
       const results = await CatalogService.searchProducts('xyzxyz')
       expect(results).toEqual([])
     })
+
+    it('finds products by size-dimension prefix', async () => {
+      const results = await CatalogService.searchProducts('בלוק 20')
+      expect(results).toHaveLength(1)
+      expect(results[0].name).toBe('בלוק עץ 20x20')
+    })
+
+    it('matches size prefix on either dimension', async () => {
+      const results = await CatalogService.searchProducts('50')
+      expect(results.map((r) => r.name)).toEqual(['קנבס 40x50'])
+    })
+
+    it('does not match numbers mid-dimension', async () => {
+      // "0" is not a prefix of 20, 30, 40 or 50
+      const results = await CatalogService.searchProducts('0')
+      expect(results).toEqual([])
+    })
+
+    it('normalizes size separators in the query', async () => {
+      const results = await CatalogService.searchProducts('40*50')
+      expect(results.map((r) => r.name)).toEqual(['קנבס 40x50'])
+    })
+
+    it('requires all tokens to match', async () => {
+      const results = await CatalogService.searchProducts('קנבס 20')
+      expect(results).toEqual([])
+    })
   })
 
   describe('getByBarcode', () => {

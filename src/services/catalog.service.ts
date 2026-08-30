@@ -75,31 +75,44 @@ export class CatalogService {
       }))
   }
 
+  /** Normalize size notation: "10X15" / "10*15" / "10/15" / "10 X 15" → "10x15". */
+  private static normalizeSizes(text: string): string {
+    return text.replace(/(\d+(?:\.\d+)?)\s*[xX×*/]\s*(\d+(?:\.\d+)?)/g, '$1x$2')
+  }
+
   /**
-   * Search products by name (partial, case-insensitive) or exact barcode.
-   * Excludes HIDDEN products.
+   * Search products by name or exact barcode. Excludes HIDDEN products.
+   * The query is split into tokens; ALL tokens must match (AND):
+   * - text tokens match as substring (case-insensitive),
+   * - pure-number tokens match a size-dimension prefix, so "10" finds
+   *   "10x15" as well as "15x10" (but not barcodes or "ל10 תמונות"),
+   * - size separators are normalized on both sides ("10*15" finds "10x15").
    */
   static async searchProducts(query: string): Promise<CatalogProduct[]> {
     const q = query.trim()
     if (q.length === 0) return []
 
+    const tokens = this.normalizeSizes(q).toLowerCase().split(/\s+/).filter(Boolean)
+
     const products = await prisma.product.findMany({
-      where: {
-        AND: [
-          { status: { in: [ProductStatus.ACTIVE, ProductStatus.OUT_OF_STOCK] } },
-          {
-            OR: [
-              { name: { contains: q } },
-              { barcode: { equals: q } },
-            ],
-          },
-        ],
-      },
+      where: { status: { in: [ProductStatus.ACTIVE, ProductStatus.OUT_OF_STOCK] } },
       orderBy: { name: 'asc' },
-      take: 50,
     })
 
-    return products.map(this.toCatalogProduct)
+    const matches = products.filter((p) => {
+      if (p.barcode === q) return true
+      const name = this.normalizeSizes(p.name).toLowerCase()
+      const words = name.split(/\s+/)
+      return tokens.every((t) => {
+        if (/^\d+(?:\.\d+)?$/.test(t)) {
+          // size-dimension prefix: "10" → 10x15, 15x10, 100x70
+          return words.some((w) => w.split('x').some((part) => part.startsWith(t)))
+        }
+        return name.includes(t)
+      })
+    })
+
+    return matches.slice(0, 50).map((p) => this.toCatalogProduct(p))
   }
 
   /**

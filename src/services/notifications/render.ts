@@ -11,7 +11,7 @@ export function renderMessage(event: NotificationEvent): string {
     case 'ORDER_SUBMITTED':
       return `הזמנה #${event.orderNumber} מ-${event.storeName} התקבלה: ${event.itemCount} פריטים, ${formatTotal(event.totalAgorot)}.`
     case 'ORDER_CONFIRMATION':
-      return `📦 ${i18n.orders.submittedSuccess}\nהזמנה #${event.orderNumber}: ${event.itemCount} פריטים, ${formatTotal(event.totalAgorot)}.\nהמחסן קיבל את ההזמנה ומתחיל לטפל בה.`
+      return `📦 ${i18n.orders.submittedSuccess}\nהזמנה #${event.orderNumber}: ${event.itemCount} פריטים.\nהמחסן קיבל את ההזמנה ומתחיל לטפל בה.`
     case 'ORDER_RECEIVED':
       return `הזמנה #${event.orderNumber}: ${i18n.orders.statuses.RECEIVED}`
     case 'ORDER_PICKING':

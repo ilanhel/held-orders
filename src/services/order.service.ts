@@ -258,7 +258,6 @@ export class OrderService {
         {
           type: 'ORDER_CONFIRMATION',
           orderNumber: view.number,
-          totalAgorot: view.totalAgorot,
           itemCount: view.items.length,
         },
         storeRecipients
