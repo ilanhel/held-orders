@@ -156,6 +156,9 @@ export const i18n = {
     title: 'מחסן',
     queue: 'הזמנות פתוחות',
     queueEmpty: 'אין הזמנות פתוחות כרגע 🎉',
+    tabOpen: 'פתוחות',
+    tabHistory: 'הושלמו',
+    historyEmpty: 'אין הזמנות שהושלמו עדיין',
     picking: 'ליקוט',
     actions: {
       markReceived: 'סימון התקבלה',

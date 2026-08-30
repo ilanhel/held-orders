@@ -442,6 +442,25 @@ export class OrderService {
   }
 
   /**
+   * Warehouse history: completed (SHIPPED) and cancelled orders, newest first,
+   * so the warehouse can look up orders that were already picked and sent.
+   */
+  static async getWarehouseHistory(limit = 100): Promise<OrderView[]> {
+    const orders = await prisma.order.findMany({
+      where: {
+        status: { in: [OrderStatus.SHIPPED, OrderStatus.CANCELLED] },
+      },
+      orderBy: { submittedAt: 'desc' },
+      take: limit,
+      include: {
+        store: true,
+        items: { orderBy: { createdAt: 'asc' } },
+      },
+    })
+    return orders.map((o) => this.toView(o))
+  }
+
+  /**
    * Get a single order by id with full details.
    */
   static async getById(orderId: string): Promise<OrderView | null> {

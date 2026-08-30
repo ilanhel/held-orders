@@ -376,6 +376,31 @@ describe('OrderService', () => {
     })
   })
 
+  describe('getWarehouseHistory', () => {
+    it('returns SHIPPED and CANCELLED orders, excludes open ones', async () => {
+      // Open order — excluded from history
+      const d1 = await OrderService.getOrCreateDraft(storeId, userId)
+      await OrderService.setItemQty(d1.id, prodA.id, 1)
+      await OrderService.submitDraft(d1.id, userId)
+      // Shipped order
+      const d2 = await OrderService.getOrCreateDraft(storeBId, userId)
+      await OrderService.setItemQty(d2.id, prodA.id, 1)
+      const s2 = await OrderService.submitDraft(d2.id, userId)
+      await OrderService.transitionStatus(s2.id, OrderStatus.RECEIVED, warehouseUserId)
+      await OrderService.transitionStatus(s2.id, OrderStatus.PICKING, warehouseUserId)
+      await OrderService.transitionStatus(s2.id, OrderStatus.READY, warehouseUserId)
+      await OrderService.transitionStatus(s2.id, OrderStatus.SHIPPED, warehouseUserId)
+      // Cancelled order
+      const d3 = await OrderService.getOrCreateDraft(storeId, userId)
+      await OrderService.setItemQty(d3.id, prodA.id, 1)
+      const s3 = await OrderService.submitDraft(d3.id, userId)
+      await OrderService.transitionStatus(s3.id, OrderStatus.CANCELLED, warehouseUserId)
+
+      const history = await OrderService.getWarehouseHistory()
+      expect(history.map((o) => o.id).sort()).toEqual([s2.id, s3.id].sort())
+    })
+  })
+
   describe('transitionStatus', () => {
     it('allows SUBMITTED → RECEIVED', async () => {
       const d = await OrderService.getOrCreateDraft(storeId, userId)

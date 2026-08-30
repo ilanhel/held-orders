@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { i18n, type OrderStatusKey } from '@/lib/i18n'
 import { formatTotal } from '@/lib/format'
@@ -30,15 +30,21 @@ export default function WarehousePage() {
   const [orders, setOrders] = useState<OrderRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [view, setView] = useState<'open' | 'history'>('open')
+  // Kept in sync inside switchView (the only place view changes) — the polling
+  // interval reads it without re-subscribing on every tab switch.
+  const viewRef = useRef<'open' | 'history'>('open')
 
-  async function load() {
+  async function load(target?: 'open' | 'history') {
+    const v = target ?? viewRef.current
     try {
-      const res = await fetch('/api/warehouse/queue')
+      const res = await fetch(`/api/warehouse/queue${v === 'history' ? '?view=history' : ''}`)
       if (res.status === 401) {
         router.push('/login')
         return
       }
       const data = await res.json()
+      if (viewRef.current !== v) return // user switched tab while fetching
       if (!res.ok) {
         setError(data?.error?.message ?? i18n.errors.serverError)
       } else {
@@ -46,10 +52,19 @@ export default function WarehousePage() {
         setError(null)
       }
     } catch {
-      setError(i18n.errors.network)
+      if (viewRef.current === v) setError(i18n.errors.network)
     } finally {
       setLoading(false)
     }
+  }
+
+  function switchView(v: 'open' | 'history') {
+    if (v === viewRef.current) return
+    viewRef.current = v
+    setView(v)
+    setOrders([])
+    setLoading(true)
+    void load(v)
   }
 
   useEffect(() => {
@@ -93,9 +108,25 @@ export default function WarehousePage() {
       </header>
 
       <section className="px-4 py-4">
-        <h2 className="text-lg font-semibold text-gray-800 mb-3">
-          {i18n.warehouse.queue} ({orders.length})
-        </h2>
+        <div className="flex items-center gap-2 mb-3">
+          <h2 className="text-lg font-semibold text-gray-800 flex-1">
+            {view === 'open' ? i18n.warehouse.queue : i18n.warehouse.tabHistory} ({orders.length})
+          </h2>
+          <div className="flex rounded-lg border border-gray-300 overflow-hidden text-sm">
+            <button
+              onClick={() => switchView('open')}
+              className={`px-4 py-2 min-h-[44px] ${view === 'open' ? 'bg-held-primary text-white font-semibold' : 'bg-white text-gray-700'}`}
+            >
+              {i18n.warehouse.tabOpen}
+            </button>
+            <button
+              onClick={() => switchView('history')}
+              className={`px-4 py-2 min-h-[44px] ${view === 'history' ? 'bg-held-primary text-white font-semibold' : 'bg-white text-gray-700'}`}
+            >
+              {i18n.warehouse.tabHistory}
+            </button>
+          </div>
+        </div>
 
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
@@ -106,7 +137,9 @@ export default function WarehousePage() {
         {loading ? (
           <p className="text-gray-500">{i18n.common.loading}</p>
         ) : orders.length === 0 ? (
-          <p className="text-gray-500 text-center py-12">{i18n.warehouse.queueEmpty}</p>
+          <p className="text-gray-500 text-center py-12">
+            {view === 'open' ? i18n.warehouse.queueEmpty : i18n.warehouse.historyEmpty}
+          </p>
         ) : (
           <ul className="space-y-2">
             {orders.map((o) => (
