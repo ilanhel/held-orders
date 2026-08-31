@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { OrderService } from '@/services/order.service'
 import { requireSession } from '@/lib/session'
 import { i18n } from '@/lib/i18n'
+import { hidePricesFor } from '@/lib/hide-prices'
 
 /**
  * GET /api/orders
@@ -30,7 +31,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const orders = await OrderService.getStoreOrders(session.storeId)
-    return NextResponse.json({ orders })
+    return NextResponse.json(hidePricesFor(session?.role, { orders }))
   } catch (err) {
     console.error('[api/orders] error:', err)
     return NextResponse.json(

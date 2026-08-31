@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { OrderService } from '@/services/order.service'
 import { requireSession } from '@/lib/session'
 import { i18n } from '@/lib/i18n'
+import { hidePricesFor } from '@/lib/hide-prices'
 
 const bodySchema = z.object({
   sourceOrderId: z.string().min(1).optional(),
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest) {
     const result = parsed.sourceOrderId
       ? await OrderService.reorder(parsed.sourceOrderId, session.storeId, session.userId)
       : await OrderService.reorderLast(session.storeId, session.userId)
-    return NextResponse.json({ draft: result.draft, skipped: result.skipped })
+    return NextResponse.json(hidePricesFor(session?.role, { draft: result.draft, skipped: result.skipped }))
   } catch (err) {
     const code = err instanceof Error ? err.message : 'SERVER_ERROR'
     const status = errorStatus[code] ?? 500

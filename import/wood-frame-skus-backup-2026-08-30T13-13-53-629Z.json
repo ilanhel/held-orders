@@ -1,0 +1,254 @@
+[
+  {
+    "id": "cmtb8ucjx0001wvg83gpaubyg",
+    "name": "מסגרת עץ גודל 15x15",
+    "barcode": "60024",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "priceAgorot": 0,
+    "imagePath": null,
+    "orderNote": null,
+    "groupName": "מסגרת עץ",
+    "status": "ACTIVE",
+    "stockQty": 0,
+    "trackStock": false,
+    "createdAt": "2026-08-27T08:11:18.670Z",
+    "updatedAt": "2026-08-30T11:16:01.837Z",
+    "barcodeAliases": []
+  },
+  {
+    "id": "cmtb8ucvb0003wvg82zgvnu70",
+    "name": "מסגרת עץ גודל 18x24",
+    "barcode": "60025",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "priceAgorot": 0,
+    "imagePath": null,
+    "orderNote": null,
+    "groupName": "מסגרת עץ",
+    "status": "ACTIVE",
+    "stockQty": 0,
+    "trackStock": false,
+    "createdAt": "2026-08-27T08:11:19.080Z",
+    "updatedAt": "2026-08-30T11:16:03.063Z",
+    "barcodeAliases": []
+  },
+  {
+    "id": "cmtb8ud6n0005wvg89r4qzoxk",
+    "name": "מסגרת עץ גודל 20x20",
+    "barcode": "60026",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "priceAgorot": 0,
+    "imagePath": null,
+    "orderNote": null,
+    "groupName": "מסגרת עץ",
+    "status": "ACTIVE",
+    "stockQty": 0,
+    "trackStock": false,
+    "createdAt": "2026-08-27T08:11:19.488Z",
+    "updatedAt": "2026-08-30T11:16:03.453Z",
+    "barcodeAliases": []
+  },
+  {
+    "id": "cmtb8ue50000bwvg8i3h03l1k",
+    "name": "מסגרת עץ גודל 30x30",
+    "barcode": "60029",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "priceAgorot": 0,
+    "imagePath": null,
+    "orderNote": null,
+    "groupName": "מסגרת עץ",
+    "status": "ACTIVE",
+    "stockQty": 0,
+    "trackStock": false,
+    "createdAt": "2026-08-27T08:11:20.724Z",
+    "updatedAt": "2026-08-30T11:16:05.124Z",
+    "barcodeAliases": []
+  },
+  {
+    "id": "cmqtbhc3y00ziwvmwynyntzp1",
+    "name": "מסגרת עץ גודל 21x30",
+    "barcode": "7291027074652",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "priceAgorot": 1346,
+    "imagePath": "https://6hdzjcoheevrwliu.public.blob.vercel-storage.com/products/cmqtbhc3y00ziwvmwynyntzp1-1782638872998.png",
+    "orderNote": null,
+    "groupName": "מסגרת עץ",
+    "status": "ACTIVE",
+    "stockQty": 0,
+    "trackStock": false,
+    "createdAt": "2026-06-25T09:45:54.574Z",
+    "updatedAt": "2026-08-30T11:16:04.276Z",
+    "barcodeAliases": [
+      {
+        "id": "cmtfjo3zu000twvubwujkmqna",
+        "productId": "cmqtbhc3y00ziwvmwynyntzp1",
+        "barcode": "7291027074652",
+        "active": true,
+        "createdAt": "2026-08-30T08:25:28.122Z"
+      },
+      {
+        "id": "cmtfjo4v0000vwvub3ou47kcg",
+        "productId": "cmqtbhc3y00ziwvmwynyntzp1",
+        "barcode": "7291027072054",
+        "active": true,
+        "createdAt": "2026-08-30T08:25:29.244Z"
+      }
+    ]
+  },
+  {
+    "id": "cmqtbhldv0108wvmw72v2206b",
+    "name": "מסגרת שחורה גודל 30x40",
+    "barcode": "7291027076328",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "priceAgorot": 2156,
+    "imagePath": "https://6hdzjcoheevrwliu.public.blob.vercel-storage.com/products/cmqtbhldv0108wvmw72v2206b-1786886052707.jpg",
+    "orderNote": null,
+    "groupName": "מסגרת שחורה",
+    "status": "ACTIVE",
+    "stockQty": 0,
+    "trackStock": false,
+    "createdAt": "2026-06-25T09:46:06.595Z",
+    "updatedAt": "2026-08-30T11:17:03.053Z",
+    "barcodeAliases": [
+      {
+        "id": "cmtfjnm5u000dwvubhh698lcj",
+        "productId": "cmqtbhldv0108wvmw72v2206b",
+        "barcode": "7291027076328",
+        "active": true,
+        "createdAt": "2026-08-30T08:25:05.011Z"
+      },
+      {
+        "id": "cmtfjnmly000fwvubtv8vlxd0",
+        "productId": "cmqtbhldv0108wvmw72v2206b",
+        "barcode": "7291027113040",
+        "active": true,
+        "createdAt": "2026-08-30T08:25:05.591Z"
+      }
+    ]
+  },
+  {
+    "id": "cmqtbhcwf00zkwvmw77x74yf1",
+    "name": "מסגרת עץ גודל 30x40",
+    "barcode": "7291027074676",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "priceAgorot": 2156,
+    "imagePath": "https://6hdzjcoheevrwliu.public.blob.vercel-storage.com/products/cmqtbhcwf00zkwvmw77x74yf1-1782638925394.png",
+    "orderNote": null,
+    "groupName": "מסגרת עץ",
+    "status": "ACTIVE",
+    "stockQty": 0,
+    "trackStock": false,
+    "createdAt": "2026-06-25T09:45:55.599Z",
+    "updatedAt": "2026-08-30T11:16:05.523Z",
+    "barcodeAliases": []
+  },
+  {
+    "id": "cmqtbid34012kwvmwvcx8nnlt",
+    "name": "מסגרת שחורה גודל 10x15",
+    "barcode": "7291027110152",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "priceAgorot": 806,
+    "imagePath": "https://6hdzjcoheevrwliu.public.blob.vercel-storage.com/products/cmqtbid34012kwvmwvcx8nnlt-1782639026824.jpg",
+    "orderNote": null,
+    "groupName": "מסגרת שחורה",
+    "status": "ACTIVE",
+    "stockQty": 0,
+    "trackStock": false,
+    "createdAt": "2026-06-25T09:46:42.496Z",
+    "updatedAt": "2026-08-30T11:16:58.649Z",
+    "barcodeAliases": []
+  },
+  {
+    "id": "cmqtbha1z00zcwvmw4rjp8e9r",
+    "name": "מסגרת עץ גודל 13x18",
+    "barcode": "7291027074614",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "priceAgorot": 896,
+    "imagePath": "https://6hdzjcoheevrwliu.public.blob.vercel-storage.com/products/cmqtbha1z00zcwvmw4rjp8e9r-1782638711096.jpg",
+    "orderNote": null,
+    "groupName": "מסגרת עץ",
+    "status": "ACTIVE",
+    "stockQty": 0,
+    "trackStock": false,
+    "createdAt": "2026-06-25T09:45:51.912Z",
+    "updatedAt": "2026-08-30T11:16:01.441Z",
+    "barcodeAliases": []
+  },
+  {
+    "id": "cmqtbh69g00z2wvmw0pok5v2j",
+    "name": "מסגרת עץ גודל 20x30",
+    "barcode": "7291027072047",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "priceAgorot": 1256,
+    "imagePath": "https://6hdzjcoheevrwliu.public.blob.vercel-storage.com/products/cmqtbh69g00z2wvmw0pok5v2j-1786886646255.jpg",
+    "orderNote": null,
+    "groupName": "מסגרת עץ",
+    "status": "ACTIVE",
+    "stockQty": 0,
+    "trackStock": false,
+    "createdAt": "2026-06-25T09:45:46.996Z",
+    "updatedAt": "2026-08-30T11:16:03.848Z",
+    "barcodeAliases": []
+  },
+  {
+    "id": "cmqtbhou3010iwvmwj2yg5p9h",
+    "name": "מסגרת עץ גודל 10x15",
+    "barcode": "7291027077172",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "priceAgorot": 806,
+    "imagePath": "https://6hdzjcoheevrwliu.public.blob.vercel-storage.com/products/cmqtbhou3010iwvmwj2yg5p9h-1786886020879.jpg",
+    "orderNote": null,
+    "groupName": "מסגרת עץ",
+    "status": "ACTIVE",
+    "stockQty": 0,
+    "trackStock": false,
+    "createdAt": "2026-06-25T09:46:11.067Z",
+    "updatedAt": "2026-08-30T11:16:00.998Z",
+    "barcodeAliases": [
+      {
+        "id": "cmtfjnt8v000lwvub3arbpzrm",
+        "productId": "cmqtbhou3010iwvmwj2yg5p9h",
+        "barcode": "7291027077172",
+        "active": true,
+        "createdAt": "2026-08-30T08:25:14.191Z"
+      },
+      {
+        "id": "cmtfjnu70000nwvubip6emvkk",
+        "productId": "cmqtbhou3010iwvmwj2yg5p9h",
+        "barcode": "7291027074607",
+        "active": true,
+        "createdAt": "2026-08-30T08:25:15.420Z"
+      }
+    ]
+  },
+  {
+    "id": "cmqtbhq3f010mwvmwa6b4f18p",
+    "name": "מסגרת עץ גודל 15x21",
+    "barcode": "7291027077196",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "priceAgorot": 986,
+    "imagePath": "https://6hdzjcoheevrwliu.public.blob.vercel-storage.com/products/cmqtbhq3f010mwvmwa6b4f18p-1786886011682.jpg",
+    "orderNote": null,
+    "groupName": "מסגרת עץ",
+    "status": "ACTIVE",
+    "stockQty": 0,
+    "trackStock": false,
+    "createdAt": "2026-06-25T09:46:12.699Z",
+    "updatedAt": "2026-08-30T11:16:02.253Z",
+    "barcodeAliases": [
+      {
+        "id": "cmtfjnyo7000pwvub2vxox269",
+        "productId": "cmqtbhq3f010mwvmwa6b4f18p",
+        "barcode": "7291027077196",
+        "active": true,
+        "createdAt": "2026-08-30T08:25:21.223Z"
+      },
+      {
+        "id": "cmtfjnzet000rwvubzsiqqaue",
+        "productId": "cmqtbhq3f010mwvmwa6b4f18p",
+        "barcode": "7291027072023",
+        "active": true,
+        "createdAt": "2026-08-30T08:25:22.181Z"
+      }
+    ]
+  }
+]

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { OrderService } from '@/services/order.service'
 import { requireSession } from '@/lib/session'
 import { i18n } from '@/lib/i18n'
+import { hidePricesFor } from '@/lib/hide-prices'
 
 /**
  * GET /api/orders/draft
@@ -30,7 +31,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const draft = await OrderService.getOrCreateDraft(session.storeId, session.userId)
-    return NextResponse.json({ order: draft })
+    return NextResponse.json(hidePricesFor(session?.role, { order: draft }))
   } catch (err) {
     console.error('[api/orders/draft] error:', err)
     return NextResponse.json(

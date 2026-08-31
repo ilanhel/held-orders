@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { CatalogService } from '@/services/catalog.service'
 import { requireSession } from '@/lib/session'
 import { i18n } from '@/lib/i18n'
+import { hidePricesFor } from '@/lib/hide-prices'
 
 /**
  * GET /api/catalog/search?q=...
@@ -9,7 +10,7 @@ import { i18n } from '@/lib/i18n'
  * Excludes HIDDEN products. Returns up to 50 results.
  */
 export async function GET(req: NextRequest) {
-  const { authenticated, error } = await requireSession(req)
+  const { authenticated, session, error } = await requireSession(req)
   if (!authenticated) {
     return NextResponse.json(
       { error: { code: 'UNAUTHORIZED', message: i18n.errors.unauthorized } },
@@ -26,7 +27,7 @@ export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get('q') ?? ''
   try {
     const results = await CatalogService.searchProducts(q)
-    return NextResponse.json({ products: results })
+    return NextResponse.json(hidePricesFor(session?.role, { products: results }))
   } catch (err) {
     console.error('[api/catalog/search] error:', err)
     return NextResponse.json(

@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { ProductRecognitionService } from '@/services/recognition'
 import { requireSession } from '@/lib/session'
 import { i18n } from '@/lib/i18n'
+import { hidePricesFor } from '@/lib/hide-prices'
 
 // ~8MB after base64 expansion (base64 is ~4/3 of raw bytes).
 const MAX_BASE64_LEN = 8 * 1024 * 1024 * 1.4
@@ -20,7 +21,7 @@ const bodySchema = z.object({
  * Available to any authenticated user (franchisees use it from the scan screen).
  */
 export async function POST(req: NextRequest) {
-  const { authenticated, error } = await requireSession(req)
+  const { authenticated, session, error } = await requireSession(req)
   if (!authenticated) {
     return NextResponse.json(
       { error: { code: 'UNAUTHORIZED', message: i18n.errors.unauthorized } },
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest) {
       base64: parsed.image,
       mimeType: parsed.mimeType,
     })
-    return NextResponse.json({ matches })
+    return NextResponse.json(hidePricesFor(session?.role, { matches }))
   } catch (err) {
     const code = err instanceof Error ? err.message : 'SERVER_ERROR'
     if (code === 'RECOGNITION_NOT_CONFIGURED') {

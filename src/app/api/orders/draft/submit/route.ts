@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { OrderService } from '@/services/order.service'
 import { requireSession } from '@/lib/session'
 import { i18n } from '@/lib/i18n'
+import { hidePricesFor } from '@/lib/hide-prices'
 
 // Large orders (80+ lines) + WhatsApp notifications need headroom beyond the
 // default serverless duration.
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
   try {
     const draft = await OrderService.getOrCreateDraft(session.storeId, session.userId)
     const submitted = await OrderService.submitDraft(draft.id, session.userId)
-    return NextResponse.json({ order: submitted })
+    return NextResponse.json(hidePricesFor(session?.role, { order: submitted }))
   } catch (err) {
     const code = err instanceof Error ? err.message : 'SERVER_ERROR'
     const status = errorStatus[code] ?? 500

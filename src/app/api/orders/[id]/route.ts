@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
 import { requireSession } from '@/lib/session'
 import { i18n } from '@/lib/i18n'
+import { hidePricesFor } from '@/lib/hide-prices'
 
 const prisma = new PrismaClient()
 
@@ -55,28 +56,30 @@ export async function GET(
       (s, i) => s + i.priceAgorot * i.qtyOrdered,
       0
     )
-    return NextResponse.json({
-      order: {
-        id: order.id,
-        number: order.number,
-        storeId: order.storeId,
-        storeName: order.store.name,
-        status: order.status,
-        submittedAt: order.submittedAt,
-        createdAt: order.createdAt,
-        items: order.items.map((i) => ({
-          id: i.id,
-          productId: i.productId,
-          productName: i.productName,
-          productBarcode: i.productBarcode,
-          priceAgorot: i.priceAgorot,
-          qtyOrdered: i.qtyOrdered,
-          qtySupplied: i.qtySupplied,
-          picked: i.picked,
-        })),
-        totalAgorot,
-      },
-    })
+    return NextResponse.json(
+      hidePricesFor(session?.role, {
+        order: {
+          id: order.id,
+          number: order.number,
+          storeId: order.storeId,
+          storeName: order.store.name,
+          status: order.status,
+          submittedAt: order.submittedAt,
+          createdAt: order.createdAt,
+          items: order.items.map((i) => ({
+            id: i.id,
+            productId: i.productId,
+            productName: i.productName,
+            productBarcode: i.productBarcode,
+            priceAgorot: i.priceAgorot,
+            qtyOrdered: i.qtyOrdered,
+            qtySupplied: i.qtySupplied,
+            picked: i.picked,
+          })),
+          totalAgorot,
+        },
+      })
+    )
   } catch (err) {
     console.error('[api/orders/:id] error:', err)
     return NextResponse.json(
