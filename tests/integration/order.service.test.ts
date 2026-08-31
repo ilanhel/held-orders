@@ -374,6 +374,24 @@ describe('OrderService', () => {
       expect(queue).toHaveLength(1)
       expect(queue[0].id).toBe(s1.id)
     })
+
+    it('sinks GREEN-marked orders to the bottom', async () => {
+      const d1 = await OrderService.getOrCreateDraft(storeId, userId)
+      await OrderService.setItemQty(d1.id, prodA.id, 1)
+      const older = await OrderService.submitDraft(d1.id, userId)
+      const d2 = await OrderService.getOrCreateDraft(storeBId, userId)
+      await OrderService.setItemQty(d2.id, prodA.id, 1)
+      const newer = await OrderService.submitDraft(d2.id, userId)
+
+      // newest-first by default
+      let queue = await OrderService.getWarehouseQueue()
+      expect(queue.map((o) => o.id)).toEqual([newer.id, older.id])
+
+      // green newer order drops below the older unmarked one
+      await OrderService.setWarehouseMark(newer.id, 'GREEN')
+      queue = await OrderService.getWarehouseQueue()
+      expect(queue.map((o) => o.id)).toEqual([older.id, newer.id])
+    })
   })
 
   describe('getWarehouseHistory', () => {

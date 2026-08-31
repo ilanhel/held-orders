@@ -419,6 +419,7 @@ export class OrderService {
   /**
    * Warehouse queue: all non-DRAFT, non-terminal orders, newest first
    * (the iPad shows the latest incoming order at the top).
+   * GREEN-marked orders (picked + invoiced) sink to the bottom of the list.
    */
   static async getWarehouseQueue(limit = 100): Promise<OrderView[]> {
     const orders = await prisma.order.findMany({
@@ -439,7 +440,11 @@ export class OrderService {
         items: { orderBy: { createdAt: 'asc' } },
       },
     })
-    return orders.map((o) => this.toView(o))
+    const views = orders.map((o) => this.toView(o))
+    return [
+      ...views.filter((o) => o.warehouseMark !== 'GREEN'),
+      ...views.filter((o) => o.warehouseMark === 'GREEN'),
+    ]
   }
 
   /**
