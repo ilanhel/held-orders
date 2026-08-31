@@ -1,4 +1,4 @@
-import { PrismaClient, OrderStatus, ProductStatus, Role, Prisma } from '@prisma/client'
+import { PrismaClient, OrderStatus, ProductStatus, Role, Prisma, WarehouseMark } from '@prisma/client'
 import { NotificationService } from './notifications'
 import { CatalogService } from './catalog.service'
 import { OrderExportService } from './export.service'
@@ -46,6 +46,7 @@ export interface OrderView {
   storeId: string
   storeName: string
   status: OrderStatus
+  warehouseMark: WarehouseMark | null
   submittedAt: Date | null
   createdAt: Date
   updatedAt: Date
@@ -461,6 +462,30 @@ export class OrderService {
   }
 
   /**
+   * Set (or clear) the warehouse visual marker on an order:
+   * YELLOW = waiting for products in production, GREEN = picked and invoiced.
+   * Internal warehouse tool — no status change, no notifications.
+   */
+  static async setWarehouseMark(
+    orderId: string,
+    mark: WarehouseMark | null
+  ): Promise<OrderView> {
+    const order = await prisma.order.findUnique({ where: { id: orderId } })
+    if (!order) throw new Error('ORDER_NOT_FOUND')
+    if (order.status === OrderStatus.DRAFT) throw new Error('ORDER_NOT_SUBMITTED')
+
+    const updated = await prisma.order.update({
+      where: { id: orderId },
+      data: { warehouseMark: mark },
+      include: {
+        store: true,
+        items: { orderBy: { createdAt: 'asc' } },
+      },
+    })
+    return this.toView(updated)
+  }
+
+  /**
    * Get a single order by id with full details.
    */
   static async getById(orderId: string): Promise<OrderView | null> {
@@ -665,6 +690,7 @@ export class OrderService {
     storeId: string
     store: { name: string }
     status: OrderStatus
+    warehouseMark: WarehouseMark | null
     submittedAt: Date | null
     createdAt: Date
     updatedAt: Date
@@ -685,6 +711,7 @@ export class OrderService {
       storeId: order.storeId,
       storeName: order.store.name,
       status: order.status,
+      warehouseMark: order.warehouseMark,
       submittedAt: order.submittedAt,
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,

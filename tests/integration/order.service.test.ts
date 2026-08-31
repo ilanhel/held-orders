@@ -401,6 +401,31 @@ describe('OrderService', () => {
     })
   })
 
+  describe('setWarehouseMark', () => {
+    it('sets, replaces and clears the mark on a submitted order', async () => {
+      const d = await OrderService.getOrCreateDraft(storeId, userId)
+      await OrderService.setItemQty(d.id, prodA.id, 1)
+      const s = await OrderService.submitDraft(d.id, userId)
+
+      const yellow = await OrderService.setWarehouseMark(s.id, 'YELLOW')
+      expect(yellow.warehouseMark).toBe('YELLOW')
+      const green = await OrderService.setWarehouseMark(s.id, 'GREEN')
+      expect(green.warehouseMark).toBe('GREEN')
+      const cleared = await OrderService.setWarehouseMark(s.id, null)
+      expect(cleared.warehouseMark).toBeNull()
+    })
+
+    it('rejects drafts and unknown orders', async () => {
+      const d = await OrderService.getOrCreateDraft(storeId, userId)
+      await expect(OrderService.setWarehouseMark(d.id, 'YELLOW')).rejects.toThrow(
+        'ORDER_NOT_SUBMITTED'
+      )
+      await expect(OrderService.setWarehouseMark('nope', 'GREEN')).rejects.toThrow(
+        'ORDER_NOT_FOUND'
+      )
+    })
+  })
+
   describe('transitionStatus', () => {
     it('allows SUBMITTED → RECEIVED', async () => {
       const d = await OrderService.getOrCreateDraft(storeId, userId)

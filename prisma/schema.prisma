@@ -141,6 +141,9 @@ model Order {
   store     Store    @relation(fields: [storeId], references: [id], onDelete: Restrict)
   createdBy String
   status    OrderStatus @default(DRAFT)
+  // Warehouse-only visual marker: YELLOW = waiting for products in production,
+  // GREEN = picked and invoiced. Independent of the status flow.
+  warehouseMark WarehouseMark?
   submittedAt DateTime?
   items     OrderItem[]
   history   OrderStatusHistory[]
@@ -161,6 +164,11 @@ enum OrderStatus {
   READY
   SHIPPED
   CANCELLED
+}
+
+enum WarehouseMark {
+  YELLOW
+  GREEN
 }
 
 model OrderItem {

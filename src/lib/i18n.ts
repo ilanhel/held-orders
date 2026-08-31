@@ -169,6 +169,10 @@ export const i18n = {
     tabOpen: 'פתוחות',
     tabHistory: 'הושלמו',
     historyEmpty: 'אין הזמנות שהושלמו עדיין',
+    mark: {
+      yellow: 'ממתינה למוצרים בייצור',
+      green: 'לוקטה ויצאה חשבונית',
+    },
     picking: 'ליקוט',
     actions: {
       markReceived: 'סימון התקבלה',

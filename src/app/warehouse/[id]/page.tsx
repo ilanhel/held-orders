@@ -22,6 +22,7 @@ type Order = {
   number: number | null
   storeName: string
   status: OrderStatusKey
+  warehouseMark: 'YELLOW' | 'GREEN' | null
   submittedAt: string | null
   items: OrderItem[]
   totalAgorot: number
@@ -101,6 +102,27 @@ export default function WarehouseOrderPage({
     void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
+
+  // Optimistic marker toggle (YELLOW = waiting for production, GREEN = invoiced).
+  async function setMark(mark: 'YELLOW' | 'GREEN' | null) {
+    const prev = order?.warehouseMark ?? null
+    setOrder((o) => (o ? { ...o, warehouseMark: mark } : o))
+    try {
+      const res = await fetch(`/api/orders/${id}/mark`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mark }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setError(data?.error?.message ?? i18n.errors.serverError)
+        setOrder((o) => (o ? { ...o, warehouseMark: prev } : o))
+      }
+    } catch {
+      setError(i18n.errors.network)
+      setOrder((o) => (o ? { ...o, warehouseMark: prev } : o))
+    }
+  }
 
   const isPickable =
     order?.status === 'SUBMITTED' ||
@@ -303,6 +325,28 @@ export default function WarehouseOrderPage({
           <div className="text-xs text-gray-500 mt-1">
             {i18n.orders.statuses[order.status]} ·{' '}
             {order.submittedAt && new Date(order.submittedAt).toLocaleString('he-IL')}
+          </div>
+          <div className="flex gap-2 mt-3">
+            <button
+              onClick={() => void setMark(order.warehouseMark === 'YELLOW' ? null : 'YELLOW')}
+              className={`flex-1 min-h-[44px] rounded-lg border text-sm font-semibold px-2 py-2 ${
+                order.warehouseMark === 'YELLOW'
+                  ? 'bg-yellow-400 border-yellow-500 text-yellow-950'
+                  : 'bg-white border-gray-300 text-gray-600'
+              }`}
+            >
+              🟡 {i18n.warehouse.mark.yellow}
+            </button>
+            <button
+              onClick={() => void setMark(order.warehouseMark === 'GREEN' ? null : 'GREEN')}
+              className={`flex-1 min-h-[44px] rounded-lg border text-sm font-semibold px-2 py-2 ${
+                order.warehouseMark === 'GREEN'
+                  ? 'bg-green-500 border-green-600 text-white'
+                  : 'bg-white border-gray-300 text-gray-600'
+              }`}
+            >
+              🟢 {i18n.warehouse.mark.green}
+            </button>
           </div>
         </div>
 

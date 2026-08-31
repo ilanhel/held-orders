@@ -10,6 +10,7 @@ type OrderRow = {
   number: number | null
   storeName: string
   status: OrderStatusKey
+  warehouseMark: 'YELLOW' | 'GREEN' | null
   submittedAt: string | null
   items: { id: string }[]
   totalAgorot: number
@@ -146,7 +147,13 @@ export default function WarehousePage() {
               <li key={o.id}>
                 <button
                   onClick={() => router.push(`/warehouse/${o.id}`)}
-                  className="w-full text-right bg-white rounded-xl border border-gray-200 p-4 hover:border-primary transition flex items-center gap-3"
+                  className={`w-full text-right rounded-xl border p-4 hover:border-primary transition flex items-center gap-3 ${
+                    o.warehouseMark === 'YELLOW'
+                      ? 'bg-yellow-100 border-yellow-400'
+                      : o.warehouseMark === 'GREEN'
+                        ? 'bg-green-100 border-green-400'
+                        : 'bg-white border-gray-200'
+                  }`}
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
@@ -158,6 +165,13 @@ export default function WarehousePage() {
                       >
                         {i18n.orders.statuses[o.status]}
                       </span>
+                      {o.warehouseMark && (
+                        <span className="text-xs font-semibold">
+                          {o.warehouseMark === 'YELLOW'
+                            ? `🟡 ${i18n.warehouse.mark.yellow}`
+                            : `🟢 ${i18n.warehouse.mark.green}`}
+                        </span>
+                      )}
                     </div>
                     <div className="text-sm text-gray-700">{o.storeName}</div>
                     <div className="text-xs text-gray-500 mt-1">

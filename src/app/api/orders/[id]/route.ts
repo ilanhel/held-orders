@@ -64,6 +64,7 @@ export async function GET(
           storeId: order.storeId,
           storeName: order.store.name,
           status: order.status,
+          warehouseMark: order.warehouseMark,
           submittedAt: order.submittedAt,
           createdAt: order.createdAt,
           items: order.items.map((i) => ({
