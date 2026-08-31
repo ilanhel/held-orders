@@ -323,9 +323,13 @@ export default function WarehouseOrderPage({
         <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
           <div className="font-semibold text-gray-900">{order.storeName}</div>
           <div className="text-xs text-gray-500 mt-1">
-            {i18n.orders.statuses[order.status]} ·{' '}
-            {order.submittedAt && new Date(order.submittedAt).toLocaleString('he-IL')}
+            {i18n.orders.statuses[order.status]}
           </div>
+          {order.submittedAt && (
+            <div className="text-base font-bold text-gray-800 mt-1">
+              📅 {new Date(order.submittedAt).toLocaleString('he-IL')}
+            </div>
+          )}
           <div className="flex gap-2 mt-3">
             <button
               onClick={() => void setMark(order.warehouseMark === 'YELLOW' ? null : 'YELLOW')}

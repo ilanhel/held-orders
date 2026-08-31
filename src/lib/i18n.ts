@@ -167,8 +167,10 @@ export const i18n = {
     queue: 'הזמנות פתוחות',
     queueEmpty: 'אין הזמנות פתוחות כרגע 🎉',
     tabOpen: 'פתוחות',
+    tabArchive: 'ארכיון',
     tabHistory: 'הושלמו',
     historyEmpty: 'אין הזמנות שהושלמו עדיין',
+    archiveEmpty: 'אין הזמנות בארכיון',
     mark: {
       yellow: 'ממתינה למוצרים בייצור',
       green: 'לוקטה ויצאה חשבונית',

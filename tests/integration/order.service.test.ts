@@ -392,6 +392,30 @@ describe('OrderService', () => {
       queue = await OrderService.getWarehouseQueue()
       expect(queue.map((o) => o.id)).toEqual([older.id, newer.id])
     })
+
+    it('moves GREEN orders older than 4 days to the archive', async () => {
+      const d = await OrderService.getOrCreateDraft(storeId, userId)
+      await OrderService.setItemQty(d.id, prodA.id, 1)
+      const s = await OrderService.submitDraft(d.id, userId)
+      await OrderService.setWarehouseMark(s.id, 'GREEN')
+
+      // fresh green order: still in queue (at the bottom), not in archive
+      expect((await OrderService.getWarehouseQueue()).map((o) => o.id)).toContain(s.id)
+      expect((await OrderService.getWarehouseArchive()).map((o) => o.id)).not.toContain(s.id)
+
+      // age it past 4 days
+      await prisma.order.update({
+        where: { id: s.id },
+        data: { submittedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000) },
+      })
+      expect((await OrderService.getWarehouseQueue()).map((o) => o.id)).not.toContain(s.id)
+      expect((await OrderService.getWarehouseArchive()).map((o) => o.id)).toContain(s.id)
+
+      // old but NOT green: stays in the queue
+      await OrderService.setWarehouseMark(s.id, 'YELLOW')
+      expect((await OrderService.getWarehouseQueue()).map((o) => o.id)).toContain(s.id)
+      expect((await OrderService.getWarehouseArchive()).map((o) => o.id)).not.toContain(s.id)
+    })
   })
 
   describe('getWarehouseHistory', () => {

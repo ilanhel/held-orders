@@ -31,15 +31,15 @@ export default function WarehousePage() {
   const [orders, setOrders] = useState<OrderRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [view, setView] = useState<'open' | 'history'>('open')
+  const [view, setView] = useState<'open' | 'archive' | 'history'>('open')
   // Kept in sync inside switchView (the only place view changes) — the polling
   // interval reads it without re-subscribing on every tab switch.
-  const viewRef = useRef<'open' | 'history'>('open')
+  const viewRef = useRef<'open' | 'archive' | 'history'>('open')
 
-  async function load(target?: 'open' | 'history') {
+  async function load(target?: 'open' | 'archive' | 'history') {
     const v = target ?? viewRef.current
     try {
-      const res = await fetch(`/api/warehouse/queue${v === 'history' ? '?view=history' : ''}`)
+      const res = await fetch(`/api/warehouse/queue${v === 'open' ? '' : `?view=${v}`}`)
       if (res.status === 401) {
         router.push('/login')
         return
@@ -59,7 +59,7 @@ export default function WarehousePage() {
     }
   }
 
-  function switchView(v: 'open' | 'history') {
+  function switchView(v: 'open' | 'archive' | 'history') {
     if (v === viewRef.current) return
     viewRef.current = v
     setView(v)
@@ -111,7 +111,12 @@ export default function WarehousePage() {
       <section className="px-4 py-4">
         <div className="flex items-center gap-2 mb-3">
           <h2 className="text-lg font-semibold text-gray-800 flex-1">
-            {view === 'open' ? i18n.warehouse.queue : i18n.warehouse.tabHistory} ({orders.length})
+            {view === 'open'
+              ? i18n.warehouse.queue
+              : view === 'archive'
+                ? i18n.warehouse.tabArchive
+                : i18n.warehouse.tabHistory}{' '}
+            ({orders.length})
           </h2>
           <div className="flex rounded-lg border border-gray-300 overflow-hidden text-sm">
             <button
@@ -119,6 +124,12 @@ export default function WarehousePage() {
               className={`px-4 py-2 min-h-[44px] ${view === 'open' ? 'bg-held-primary text-white font-semibold' : 'bg-white text-gray-700'}`}
             >
               {i18n.warehouse.tabOpen}
+            </button>
+            <button
+              onClick={() => switchView('archive')}
+              className={`px-4 py-2 min-h-[44px] ${view === 'archive' ? 'bg-held-primary text-white font-semibold' : 'bg-white text-gray-700'}`}
+            >
+              {i18n.warehouse.tabArchive}
             </button>
             <button
               onClick={() => switchView('history')}
@@ -139,7 +150,11 @@ export default function WarehousePage() {
           <p className="text-gray-500">{i18n.common.loading}</p>
         ) : orders.length === 0 ? (
           <p className="text-gray-500 text-center py-12">
-            {view === 'open' ? i18n.warehouse.queueEmpty : i18n.warehouse.historyEmpty}
+            {view === 'open'
+              ? i18n.warehouse.queueEmpty
+              : view === 'archive'
+                ? i18n.warehouse.archiveEmpty
+                : i18n.warehouse.historyEmpty}
           </p>
         ) : (
           <ul className="space-y-2">
@@ -176,17 +191,18 @@ export default function WarehousePage() {
                     <div className="text-sm text-gray-700">{o.storeName}</div>
                     <div className="text-xs text-gray-500 mt-1">
                       {o.items.length} {i18n.orders.items} · {formatTotal(o.totalAgorot)}
-                      {o.submittedAt && (
-                        <span className="mr-2">
-                          · {new Date(o.submittedAt).toLocaleString('he-IL', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </span>
-                      )}
                     </div>
+                    {o.submittedAt && (
+                      <div className="text-base font-bold text-gray-800 mt-1">
+                        📅{' '}
+                        {new Date(o.submittedAt).toLocaleString('he-IL', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </div>
+                    )}
                   </div>
                   <span className="text-gray-300 text-xl">‹</span>
                 </button>

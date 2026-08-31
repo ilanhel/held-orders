@@ -6,7 +6,8 @@ import { i18n } from '@/lib/i18n'
 /**
  * GET /api/warehouse/queue
  * Returns all active (non-terminal, non-draft) orders for the warehouse to pick.
- * With ?view=history returns completed (SHIPPED/CANCELLED) orders instead.
+ * ?view=archive — GREEN-marked open orders older than 4 days.
+ * ?view=history — completed (SHIPPED/CANCELLED) orders.
  */
 export async function GET(req: NextRequest) {
   const { authenticated, error } = await requireSession(req, ['WAREHOUSE', 'ADMIN'])
@@ -28,7 +29,9 @@ export async function GET(req: NextRequest) {
     const orders =
       view === 'history'
         ? await OrderService.getWarehouseHistory()
-        : await OrderService.getWarehouseQueue()
+        : view === 'archive'
+          ? await OrderService.getWarehouseArchive()
+          : await OrderService.getWarehouseQueue()
     return NextResponse.json({ orders })
   } catch (err) {
     console.error('[api/warehouse/queue] error:', err)

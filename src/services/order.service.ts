@@ -416,10 +416,16 @@ export class OrderService {
     return this.reorder(last.id, storeId, userId)
   }
 
+  /** GREEN-marked orders older than this move from the queue to the archive tab. */
+  private static archiveCutoff(): Date {
+    return new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)
+  }
+
   /**
    * Warehouse queue: all non-DRAFT, non-terminal orders, newest first
    * (the iPad shows the latest incoming order at the top).
-   * GREEN-marked orders (picked + invoiced) sink to the bottom of the list.
+   * GREEN-marked orders (picked + invoiced) sink to the bottom of the list,
+   * and after 4 days move to the archive view entirely.
    */
   static async getWarehouseQueue(limit = 100): Promise<OrderView[]> {
     const orders = await prisma.order.findMany({
@@ -431,6 +437,10 @@ export class OrderService {
             OrderStatus.PICKING,
             OrderStatus.READY,
           ],
+        },
+        NOT: {
+          warehouseMark: 'GREEN',
+          submittedAt: { lt: this.archiveCutoff() },
         },
       },
       orderBy: { submittedAt: 'desc' },
@@ -445,6 +455,34 @@ export class OrderService {
       ...views.filter((o) => o.warehouseMark !== 'GREEN'),
       ...views.filter((o) => o.warehouseMark === 'GREEN'),
     ]
+  }
+
+  /**
+   * Warehouse archive: GREEN-marked (picked + invoiced) open orders older
+   * than 4 days — out of the way of the active queue but still reachable.
+   */
+  static async getWarehouseArchive(limit = 100): Promise<OrderView[]> {
+    const orders = await prisma.order.findMany({
+      where: {
+        status: {
+          in: [
+            OrderStatus.SUBMITTED,
+            OrderStatus.RECEIVED,
+            OrderStatus.PICKING,
+            OrderStatus.READY,
+          ],
+        },
+        warehouseMark: 'GREEN',
+        submittedAt: { lt: this.archiveCutoff() },
+      },
+      orderBy: { submittedAt: 'desc' },
+      take: limit,
+      include: {
+        store: true,
+        items: { orderBy: { createdAt: 'asc' } },
+      },
+    })
+    return orders.map((o) => this.toView(o))
   }
 
   /**
