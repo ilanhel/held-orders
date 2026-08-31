@@ -54,6 +54,7 @@ const RULES: PickOrderRule[] = [
   { pattern: /(^|\s)דיו(\s|$)/, rank: 7 },
   { pattern: /מיכל (ספיגה|עודפים)/, rank: 7 },
   { pattern: /קנווס (כותנה|פוליאסטר)/, rank: 7 },
+  { pattern: /גליל קנבס/, rank: 7 },
   { pattern: /נייר (לוסטר|מבריק|סאטן)/, rank: 7 },
   { pattern: /מנגנון/, rank: 17 }, // מנגנון לשעון — before שעון rules
   // חומרי סובלימציה — אחרי בלוק מטאל
