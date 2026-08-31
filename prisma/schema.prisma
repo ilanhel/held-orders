@@ -70,6 +70,9 @@ model Product {
   orderNote       String?
   groupName       String?
   status          ProductStatus @default(ACTIVE)
+  // One-off products created by franchisees (custom canvas sizes): orderable
+  // and visible to the warehouse, but never shown in the catalog or search.
+  customSize      Boolean       @default(false)
   stockQty        Int           @default(0)
   trackStock      Boolean       @default(false)
   createdAt       DateTime      @default(now())

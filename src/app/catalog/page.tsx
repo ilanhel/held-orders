@@ -262,6 +262,29 @@ export default function CatalogPage() {
     return next
   }
 
+  // Custom canvas size (מסגרת קנבס): the server finds/creates the product for
+  // the size and adds qty to the draft. Returns true on success.
+  async function addCustomCanvas(width: number, height: number, qty: number): Promise<boolean> {
+    setError(null)
+    try {
+      const res = await fetch('/api/orders/draft/canvas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ width, height, qty }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setError(data?.error?.message ?? i18n.errors.serverError)
+        return false
+      }
+      setOrder(applyPending(data.order ?? null))
+      return true
+    } catch {
+      setError(i18n.errors.network)
+      return false
+    }
+  }
+
   async function doSync(productId: string) {
     const qty = pendingQty.current.get(productId)
     if (qty === undefined) return
@@ -576,6 +599,9 @@ export default function CatalogPage() {
                                 />
                               ))}
                           </div>
+                          {group.name === 'מסגרת קנבס' && (
+                            <CustomCanvasForm onAdd={addCustomCanvas} />
+                          )}
                         </div>
                       )}
                     </Fragment>
@@ -755,6 +781,99 @@ function VariantRow({
       <div className="flex-shrink-0">
         <QtyStepper qty={qty} onChange={onChange} disabled={isOOS} size="sm" />
       </div>
+    </div>
+  )
+}
+
+// Free-size canvas frame entry: the franchisee types width x height (cm) and a
+// quantity; the size is added to the cart even if it's not in the catalog.
+function CustomCanvasForm({
+  onAdd,
+}: {
+  onAdd: (width: number, height: number, qty: number) => Promise<boolean>
+}) {
+  const [width, setWidth] = useState('')
+  const [height, setHeight] = useState('')
+  const [qty, setQty] = useState('1')
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
+
+  const w = parseInt(width, 10)
+  const h = parseInt(height, 10)
+  const q = parseInt(qty, 10)
+  const inRange = (n: number) => Number.isInteger(n) && n >= 10 && n <= 300
+  const valid = inRange(w) && inRange(h) && Number.isInteger(q) && q >= 1
+
+  async function submit() {
+    if (!valid || busy) return
+    setBusy(true)
+    setMessage(null)
+    const ok = await onAdd(w, h, q)
+    setBusy(false)
+    if (ok) {
+      setMessage(`מסגרת קנבס ${w}x${h} — ${i18n.catalog.customCanvas.added}`)
+      setWidth('')
+      setHeight('')
+      setQty('1')
+    }
+  }
+
+  const numeric = (v: string) => v.replace(/[^\d]/g, '').slice(0, 3)
+  const inputCls =
+    'w-16 min-h-[44px] border border-gray-300 rounded-lg px-2 py-2 text-center text-sm'
+
+  return (
+    <div className="px-3 py-3 bg-gray-50 border-t border-gray-200">
+      <div className="text-sm font-bold text-gray-800 mb-2">
+        {i18n.catalog.customCanvas.title}
+      </div>
+      <div className="flex items-end gap-2 flex-wrap">
+        <label className="text-xs text-gray-600">
+          {i18n.catalog.customCanvas.width}
+          <input
+            type="text"
+            inputMode="numeric"
+            value={width}
+            onChange={(e) => setWidth(numeric(e.target.value))}
+            className={`${inputCls} block mt-1`}
+            dir="ltr"
+          />
+        </label>
+        <span className="pb-3 text-gray-500 font-bold">x</span>
+        <label className="text-xs text-gray-600">
+          {i18n.catalog.customCanvas.height}
+          <input
+            type="text"
+            inputMode="numeric"
+            value={height}
+            onChange={(e) => setHeight(numeric(e.target.value))}
+            className={`${inputCls} block mt-1`}
+            dir="ltr"
+          />
+        </label>
+        <label className="text-xs text-gray-600">
+          {i18n.catalog.customCanvas.qty}
+          <input
+            type="text"
+            inputMode="numeric"
+            value={qty}
+            onChange={(e) => setQty(numeric(e.target.value))}
+            className={`${inputCls} block mt-1`}
+            dir="ltr"
+          />
+        </label>
+        <button
+          onClick={() => void submit()}
+          disabled={!valid || busy}
+          className="min-h-[44px] px-4 py-2 rounded-lg font-semibold text-sm bg-primary text-white disabled:bg-gray-300 disabled:text-gray-500"
+        >
+          {busy ? i18n.catalog.customCanvas.adding : i18n.catalog.customCanvas.add}
+        </button>
+      </div>
+      {(width || height) && !(inRange(w) && inRange(h)) && (
+        <div className="text-xs text-red-600 mt-1">{i18n.catalog.customCanvas.invalid}</div>
+      )}
+      {message && <div className="text-sm text-green-700 font-semibold mt-2">{message}</div>}
     </div>
   )
 }

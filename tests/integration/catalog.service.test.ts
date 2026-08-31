@@ -159,6 +159,71 @@ describe('CatalogService', () => {
     })
   })
 
+  describe('ensureCanvasSize', () => {
+    async function seedCanvasCategory() {
+      return prisma.category.create({ data: { name: 'בלינדרמים', sortOrder: 30 } })
+    }
+
+    it('creates a customSize product with a size-digits barcode', async () => {
+      await seedCanvasCategory()
+      const p = await CatalogService.ensureCanvasSize(45, 55)
+      expect(p.name).toBe('מסגרת קנבס 45x55')
+      expect(p.barcode).toBe('4555')
+      const row = await prisma.product.findUnique({ where: { id: p.id } })
+      expect(row?.customSize).toBe(true)
+      expect(row?.status).toBe(ProductStatus.ACTIVE)
+      expect(row?.priceAgorot).toBe(0)
+    })
+
+    it('reuses an existing product with the same name', async () => {
+      const cat = await seedCanvasCategory()
+      const existing = await prisma.product.create({
+        data: {
+          name: 'מסגרת קנבס 40x50',
+          barcode: '77',
+          categoryId: cat.id,
+          priceAgorot: 500,
+        },
+      })
+      const p = await CatalogService.ensureCanvasSize(40, 50)
+      expect(p.id).toBe(existing.id)
+      expect(p.barcode).toBe('77')
+    })
+
+    it('is idempotent for repeated custom sizes', async () => {
+      await seedCanvasCategory()
+      const a = await CatalogService.ensureCanvasSize(66, 77)
+      const b = await CatalogService.ensureCanvasSize(66, 77)
+      expect(b.id).toBe(a.id)
+    })
+
+    it('falls back to KNV barcode when digits are taken', async () => {
+      const cat = await seedCanvasCategory()
+      await prisma.product.create({
+        data: { name: 'מוצר אחר', barcode: '4555', categoryId: cat.id, priceAgorot: 100 },
+      })
+      const p = await CatalogService.ensureCanvasSize(45, 55)
+      expect(p.barcode).toBe('KNV45x55')
+    })
+
+    it('rejects sizes outside 10-300', async () => {
+      await seedCanvasCategory()
+      await expect(CatalogService.ensureCanvasSize(9, 50)).rejects.toThrow('INVALID_SIZE')
+      await expect(CatalogService.ensureCanvasSize(50, 301)).rejects.toThrow('INVALID_SIZE')
+      await expect(CatalogService.ensureCanvasSize(50.5 as number, 50)).rejects.toThrow('INVALID_SIZE')
+    })
+
+    it('custom products are hidden from catalog and search', async () => {
+      await seedCanvasCategory()
+      const p = await CatalogService.ensureCanvasSize(48, 58)
+      const catalog = await CatalogService.getCatalog()
+      const inCatalog = catalog.flatMap((c) => c.products).some((x) => x.id === p.id)
+      expect(inCatalog).toBe(false)
+      const results = await CatalogService.searchProducts('מסגרת קנבס 48')
+      expect(results).toEqual([])
+    })
+  })
+
   describe('getByBarcode', () => {
     it('returns product for known active barcode', async () => {
       const product = await CatalogService.getByBarcode('7290000010001')

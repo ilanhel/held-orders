@@ -55,6 +55,16 @@ export const i18n = {
     quantity: 'כמות',
     variants: 'אפשרויות',
     chooseVariant: 'לחצו לבחירת גודל / צבע',
+    customCanvas: {
+      title: 'מידה אחרת (ס"מ)',
+      width: 'רוחב',
+      height: 'גובה',
+      qty: 'כמות',
+      add: 'הוספה לסל',
+      adding: 'מוסיף...',
+      added: 'נוסף לסל ✓',
+      invalid: 'מידה בין 10 ל-300 ס"מ',
+    },
   },
   scan: {
     title: 'סריקה וזיהוי',

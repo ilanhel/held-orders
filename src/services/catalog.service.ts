@@ -59,6 +59,7 @@ export class CatalogService {
         products: {
           where: {
             status: { in: [ProductStatus.ACTIVE, ProductStatus.OUT_OF_STOCK] },
+            customSize: false,
           },
           orderBy: { name: 'asc' },
         },
@@ -95,7 +96,10 @@ export class CatalogService {
     const tokens = this.normalizeSizes(q).toLowerCase().split(/\s+/).filter(Boolean)
 
     const products = await prisma.product.findMany({
-      where: { status: { in: [ProductStatus.ACTIVE, ProductStatus.OUT_OF_STOCK] } },
+      where: {
+        status: { in: [ProductStatus.ACTIVE, ProductStatus.OUT_OF_STOCK] },
+        customSize: false,
+      },
       orderBy: { name: 'asc' },
     })
 
@@ -135,6 +139,52 @@ export class CatalogService {
     const product = await prisma.product.findUnique({ where: { id } })
     if (!product || product.status === ProductStatus.HIDDEN) return null
     return this.toCatalogProduct(product)
+  }
+
+  /**
+   * Find or create a one-off canvas-frame product for a custom size typed by a
+   * franchisee (SPEC: any size 10-300cm). Reuses an existing product with the
+   * same canonical name (including regular catalog sizes); otherwise creates an
+   * ACTIVE product flagged customSize (never shown in catalog/search).
+   * Invented barcode: "<w><h>" digits, or "KNV<w>x<h>" if taken.
+   * Throws INVALID_SIZE | CANVAS_CATEGORY_NOT_FOUND.
+   */
+  static async ensureCanvasSize(width: number, height: number): Promise<CatalogProduct> {
+    const valid = (n: number) => Number.isInteger(n) && n >= 10 && n <= 300
+    if (!valid(width) || !valid(height)) throw new Error('INVALID_SIZE')
+
+    const name = `מסגרת קנבס ${width}x${height}`
+    const existing = await prisma.product.findFirst({ where: { name } })
+    if (existing) return this.toCatalogProduct(existing)
+
+    const category = await prisma.category.findFirst({ where: { name: 'בלינדרמים' } })
+    if (!category) throw new Error('CANVAS_CATEGORY_NOT_FOUND')
+
+    let barcode = `${width}${height}`
+    const taken =
+      (await prisma.product.findUnique({ where: { barcode } })) ||
+      (await prisma.productBarcodeAlias.findUnique({ where: { barcode } }))
+    if (taken) barcode = `KNV${width}x${height}`
+
+    try {
+      const product = await prisma.product.create({
+        data: {
+          name,
+          barcode,
+          categoryId: category.id,
+          priceAgorot: 0,
+          status: ProductStatus.ACTIVE,
+          customSize: true,
+        },
+      })
+      return this.toCatalogProduct(product)
+    } catch (err) {
+      // Unique-barcode race (two stores adding the same size at once) — adopt
+      // the winner.
+      const winner = await prisma.product.findFirst({ where: { name } })
+      if (winner) return this.toCatalogProduct(winner)
+      throw err
+    }
   }
 
   // ---------------------------------------------------------------------------
