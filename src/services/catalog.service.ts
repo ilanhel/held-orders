@@ -12,6 +12,7 @@ export interface CatalogProduct {
   imagePath: string | null
   orderNote: string | null
   groupName: string | null
+  unitsPerPack: number
   status: ProductStatus
 }
 
@@ -389,10 +390,18 @@ export class CatalogService {
       status?: ProductStatus
       orderNote?: string | null
       groupName?: string | null
+      unitsPerPack?: number
     }
   ): Promise<AdminProduct> {
     const product = await prisma.product.findUnique({ where: { id } })
     if (!product) throw new Error('PRODUCT_NOT_FOUND')
+
+    if (
+      input.unitsPerPack !== undefined &&
+      (!Number.isInteger(input.unitsPerPack) || input.unitsPerPack < 1)
+    ) {
+      throw new Error('INVALID_UNITS_PER_PACK')
+    }
 
     if (input.categoryId) {
       const category = await prisma.category.findUnique({
@@ -428,6 +437,7 @@ export class CatalogService {
         ...(input.groupName !== undefined
           ? { groupName: input.groupName?.trim() || null }
           : {}),
+        ...(input.unitsPerPack !== undefined ? { unitsPerPack: input.unitsPerPack } : {}),
       },
       include: { category: { select: { name: true } } },
     })
@@ -693,6 +703,7 @@ export class CatalogService {
     imagePath: string | null
     orderNote: string | null
     groupName: string | null
+    unitsPerPack: number
     status: ProductStatus
   }): CatalogProduct {    return {
       id: p.id,
@@ -703,6 +714,7 @@ export class CatalogService {
       imagePath: p.imagePath,
       orderNote: p.orderNote,
       groupName: p.groupName,
+      unitsPerPack: p.unitsPerPack,
       status: p.status,
     }
   }

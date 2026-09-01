@@ -688,9 +688,16 @@ export class OrderService {
     const phone = process.env.ERP_INTAKE_PHONE
     if (!phone) throw new Error('ERP_PHONE_NOT_CONFIGURED')
 
-    const lines = order.items.map((i) => ({
+    // Invoice quantities are in INDIVIDUAL units (× unitsPerPack) — the
+    // picking screen keeps showing packs, but the ERP counts singles.
+    const itemsWithPack = await prisma.orderItem.findMany({
+      where: { orderId },
+      orderBy: { productName: 'asc' },
+      include: { product: { select: { unitsPerPack: true } } },
+    })
+    const lines = itemsWithPack.map((i) => ({
       barcode: i.productBarcode,
-      qty: i.qtySupplied ?? i.qtyOrdered,
+      qty: (i.qtySupplied ?? i.qtyOrdered) * i.product.unitsPerPack,
     }))
 
     const { buffer, filename } = await OrderExportService.buildErpXlsx(orderId)

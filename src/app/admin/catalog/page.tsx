@@ -19,6 +19,7 @@ type Product = {
   imagePath: string | null
   orderNote: string | null
   groupName: string | null
+  unitsPerPack: number
 }
 
 type Category = { id: string; name: string; sortOrder: number }
@@ -234,6 +235,7 @@ export default function AdminCatalogPage() {
       categoryId: string
       orderNote: string | null
       groupName: string | null
+      unitsPerPack: number
     }
   ): Promise<boolean> {
     setBusyId(p.id)
@@ -261,6 +263,7 @@ export default function AdminCatalogPage() {
                 categoryName: updated.categoryName,
                 orderNote: updated.orderNote,
                 groupName: updated.groupName,
+                unitsPerPack: updated.unitsPerPack,
               }
             : x
         )
@@ -1041,6 +1044,7 @@ function EditProductForm({
     categoryId: string
     orderNote: string | null
     groupName: string | null
+    unitsPerPack: number
   }) => void
 }) {
   const [name, setName] = useState(product.name)
@@ -1048,8 +1052,11 @@ function EditProductForm({
   const [categoryId, setCategoryId] = useState(product.categoryId)
   const [orderNote, setOrderNote] = useState(product.orderNote ?? '')
   const [groupName, setGroupName] = useState(product.groupName ?? '')
+  const [unitsPerPack, setUnitsPerPack] = useState(String(product.unitsPerPack ?? 1))
 
-  const valid = name.trim() && barcode.trim() && categoryId
+  const unitsValue = Number(unitsPerPack)
+  const unitsValid = Number.isInteger(unitsValue) && unitsValue >= 1
+  const valid = name.trim() && barcode.trim() && categoryId && unitsValid
 
   function submit() {
     if (!valid || disabled) return
@@ -1059,6 +1066,7 @@ function EditProductForm({
       categoryId,
       orderNote: orderNote.trim() || null,
       groupName: groupName.trim() || null,
+      unitsPerPack: unitsValue,
     })
   }
 
@@ -1119,6 +1127,17 @@ function EditProductForm({
             placeholder={t.groupNamePlaceholder}
             onChange={(e) => setGroupName(e.target.value)}
             className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none disabled:opacity-50"
+          />
+        </label>
+        <label className="block">
+          <span className="text-xs text-gray-500">{t.unitsPerPack}</span>
+          <input
+            value={unitsPerPack}
+            disabled={disabled}
+            type="text"
+            inputMode="numeric"
+            onChange={(e) => setUnitsPerPack(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-left focus:border-primary focus:outline-none disabled:opacity-50"
           />
         </label>
       </div>

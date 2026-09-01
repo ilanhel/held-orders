@@ -147,4 +147,38 @@ describe('OrderExportService', () => {
     expect(ws.getCell('C1').value).toBeNull()
     expect(ws.getCell('A2').value).toBeNull() // zero-qty line omitted
   })
+
+  it('converts pack quantities to individual units in invoice/ERP outputs', async () => {
+    // prodA is picked in packs of 5 (e.g. shirts) — invoices count singles.
+    await prisma.product.update({ where: { id: prodA.id }, data: { unitsPerPack: 5 } })
+
+    const d = await OrderService.getOrCreateDraft(storeId, userId)
+    await OrderService.setItemQty(d.id, prodA.id, 2) // 2 packs = 10 units
+    await OrderService.setItemQty(d.id, prodB.id, 3) // unitsPerPack 1
+    const s = await OrderService.submitDraft(d.id, userId)
+    await OrderService.transitionStatus(s.id, OrderStatus.RECEIVED, warehouseUserId)
+
+    // Accounting sheet + ERP sheet of the order workbook
+    const { buffer } = await OrderExportService.buildOrderXlsx(s.id)
+    const wb = new ExcelJS.Workbook()
+    await wb.xlsx.load(buffer as unknown as ArrayBuffer)
+    const ws = wb.getWorksheet('הזמנה')!
+    expect(ws.getCell('C2').value).toBe('מוצר אקס')
+    expect(ws.getCell('F2').value).toBe(10) // 2 packs × 5
+    expect(ws.getCell('I2').value).toBeCloseTo(450.0, 2) // 10 × 45.00 (unit price)
+    expect(ws.getCell('F3').value).toBe(3)
+    const erpSheet = wb.getWorksheet('קליטה ל-ERP')!
+    expect(erpSheet.getCell('B1').value).toBe(10)
+    expect(erpSheet.getCell('B2').value).toBe(3)
+
+    // Standalone ERP workbook (sent via WhatsApp) — supplied packs × units.
+    await OrderService.updateItemSupply(s.id, s.items[0].id, 1, true) // shortage 2→1 pack
+    const erp = await OrderExportService.buildErpXlsx(s.id)
+    const wb2 = new ExcelJS.Workbook()
+    await wb2.xlsx.load(erp.buffer as unknown as ArrayBuffer)
+    const ws2 = wb2.worksheets[0]
+    expect(ws2.getCell('A1').value).toBe('EXP-A')
+    expect(ws2.getCell('B1').value).toBe(5) // 1 pack × 5
+    expect(ws2.getCell('B2').value).toBe(3)
+  })
 })

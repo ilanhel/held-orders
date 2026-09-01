@@ -67,7 +67,9 @@ export class OrderExportService {
     items.forEach((item, i) => {
       // Quantity reflects what was actually supplied (after shortage updates);
       // falls back to the ordered amount before picking has started.
-      const qty = item.qtySupplied ?? item.qtyOrdered
+      // The invoice/accounting system counts INDIVIDUAL units, so pack
+      // quantities are converted (e.g. 1 shirt pack -> 5 shirts).
+      const qty = (item.qtySupplied ?? item.qtyOrdered) * item.product.unitsPerPack
       const lineAgorot = item.priceAgorot * qty
       subtotalAgorot += lineAgorot
 
@@ -154,14 +156,15 @@ export class OrderExportService {
     // nothing else (no header row, no line numbers, no price, no styling):
     //   A=ברקוד  B=כמות
     // Quantities reflect what was actually supplied (after shortage updates),
-    // so the block can be pasted into the ERP as-is.
+    // converted to individual units (× unitsPerPack), so the block can be
+    // pasted into the ERP as-is.
     // ---------------------------------------------------------------------------
     const erp = wb.addWorksheet('קליטה ל-ERP', {
       views: [{ rightToLeft: true }],
     })
     let erpRowIdx = 1
     items.forEach((item) => {
-      const qty = item.qtySupplied ?? item.qtyOrdered
+      const qty = (item.qtySupplied ?? item.qtyOrdered) * item.product.unitsPerPack
       const r = erp.getRow(erpRowIdx)
       r.getCell(1).value = item.productBarcode // ברקוד
       r.getCell(2).value = qty // כמות
@@ -186,7 +189,12 @@ export class OrderExportService {
   static async buildErpXlsx(orderId: string): Promise<{ buffer: Buffer; filename: string }> {
     const order = await prisma.order.findUnique({
       where: { id: orderId },
-      include: { items: { orderBy: [{ productName: 'asc' }] } },
+      include: {
+        items: {
+          orderBy: [{ productName: 'asc' }],
+          include: { product: { select: { unitsPerPack: true } } },
+        },
+      },
     })
     if (!order) throw new Error('ORDER_NOT_FOUND')
 
@@ -197,7 +205,8 @@ export class OrderExportService {
 
     let rowIdx = 1
     for (const item of order.items) {
-      const qty = item.qtySupplied ?? item.qtyOrdered
+      // The invoice system counts individual units — convert pack quantities.
+      const qty = (item.qtySupplied ?? item.qtyOrdered) * item.product.unitsPerPack
       if (qty <= 0) continue
       const r = ws.getRow(rowIdx)
       r.getCell(1).value = item.productBarcode

@@ -324,6 +324,7 @@ export const i18n = {
       orderNotePlaceholder: 'למשל: הזמנה בארגזים של 36 יחידות',
       groupName: 'שם קבוצה (מוצרים עם אותו שם מקובצים בקטלוג)',
       groupNamePlaceholder: 'למשל: חולצת סובלימציה ילדים',
+      unitsPerPack: 'בודדים בחבילה (לחשבונית: כמות בהזמנה × ערך זה)',
       price: 'מחיר (₪)',
       status: 'סטטוס',
       save: 'שמירה',
