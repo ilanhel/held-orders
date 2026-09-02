@@ -29,6 +29,15 @@ const STATUS_EVENT_MAP: Partial<Record<OrderStatus, NotificationEvent['type']>> 
   SHIPPED: 'ORDER_SHIPPED',
 }
 
+// Items include shared by every query that feeds toView — pulls each line's
+// live product category so the franchisee UI can group items by category.
+const ITEMS_FOR_VIEW = {
+  orderBy: { createdAt: 'asc' as const },
+  include: {
+    product: { select: { category: { select: { name: true, sortOrder: true } } } },
+  },
+}
+
 export interface OrderItemView {
   id: string
   productId: string
@@ -38,6 +47,8 @@ export interface OrderItemView {
   qtyOrdered: number
   qtySupplied: number | null
   picked: boolean
+  categoryName: string
+  categorySortOrder: number
 }
 
 export interface OrderView {
@@ -64,7 +75,7 @@ export class OrderService {
       where: { storeId, status: OrderStatus.DRAFT },
       include: {
         store: true,
-        items: { orderBy: { createdAt: 'asc' } },
+        items: ITEMS_FOR_VIEW,
       },
     })
 
@@ -77,7 +88,7 @@ export class OrderService {
         },
         include: {
           store: true,
-          items: { orderBy: { createdAt: 'asc' } },
+          items: ITEMS_FOR_VIEW,
         },
       })
     }
@@ -133,7 +144,7 @@ export class OrderService {
       where: { id: orderId },
       include: {
         store: true,
-        items: { orderBy: { createdAt: 'asc' } },
+        items: ITEMS_FOR_VIEW,
       },
     })
     return this.toView(updated!)
@@ -231,7 +242,7 @@ export class OrderService {
       where: { id: orderId },
       include: {
         store: true,
-        items: { orderBy: { createdAt: 'asc' } },
+        items: ITEMS_FOR_VIEW,
       },
     })
     const view = this.toView(submitted!)
@@ -340,7 +351,7 @@ export class OrderService {
       take: limit,
       include: {
         store: true,
-        items: { orderBy: { createdAt: 'asc' } },
+        items: ITEMS_FOR_VIEW,
       },
     })
     return orders.map((o) => this.toView(o))
@@ -447,7 +458,7 @@ export class OrderService {
       take: limit,
       include: {
         store: true,
-        items: { orderBy: { createdAt: 'asc' } },
+        items: ITEMS_FOR_VIEW,
       },
     })
     const views = orders.map((o) => this.toView(o))
@@ -479,7 +490,7 @@ export class OrderService {
       take: limit,
       include: {
         store: true,
-        items: { orderBy: { createdAt: 'asc' } },
+        items: ITEMS_FOR_VIEW,
       },
     })
     return orders.map((o) => this.toView(o))
@@ -498,7 +509,7 @@ export class OrderService {
       take: limit,
       include: {
         store: true,
-        items: { orderBy: { createdAt: 'asc' } },
+        items: ITEMS_FOR_VIEW,
       },
     })
     return orders.map((o) => this.toView(o))
@@ -522,7 +533,7 @@ export class OrderService {
       data: { warehouseMark: mark },
       include: {
         store: true,
-        items: { orderBy: { createdAt: 'asc' } },
+        items: ITEMS_FOR_VIEW,
       },
     })
     return this.toView(updated)
@@ -536,7 +547,7 @@ export class OrderService {
       where: { id: orderId },
       include: {
         store: true,
-        items: { orderBy: { createdAt: 'asc' } },
+        items: ITEMS_FOR_VIEW,
       },
     })
     return order ? this.toView(order) : null
@@ -574,7 +585,7 @@ export class OrderService {
 
     const updated = await prisma.order.findUnique({
       where: { id: orderId },
-      include: { store: true, items: { orderBy: { createdAt: 'asc' } } },
+      include: { store: true, items: ITEMS_FOR_VIEW },
     })
     const view = this.toView(updated!)
 
@@ -753,6 +764,7 @@ export class OrderService {
       qtyOrdered: number
       qtySupplied: number | null
       picked: boolean
+      product: { category: { name: string; sortOrder: number } }
     }[]
   }): OrderView {
     return {
@@ -774,6 +786,8 @@ export class OrderService {
         qtyOrdered: i.qtyOrdered,
         qtySupplied: i.qtySupplied,
         picked: i.picked,
+        categoryName: i.product.category.name,
+        categorySortOrder: i.product.category.sortOrder,
       })),
       totalAgorot: order.items.reduce(
         (sum, i) => sum + i.priceAgorot * i.qtyOrdered,

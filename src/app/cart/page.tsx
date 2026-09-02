@@ -12,6 +12,8 @@ type OrderItem = {
   productBarcode: string
   priceAgorot: number
   qtyOrdered: number
+  categoryName?: string
+  categorySortOrder?: number
 }
 
 type Order = {
@@ -20,6 +22,28 @@ type Order = {
   status: string
   items: OrderItem[]
   totalAgorot: number
+}
+
+type CategoryGroup = { name: string; sortOrder: number; items: OrderItem[] }
+
+// Group order items by their product's category, ordered like the catalog
+// (category sortOrder). Items missing category info fall into a trailing
+// "other items" group.
+function groupByCategory(items: OrderItem[]): CategoryGroup[] {
+  const groups = new Map<string, CategoryGroup>()
+  for (const item of items) {
+    const name = item.categoryName ?? i18n.orders.uncategorized
+    const sortOrder = item.categorySortOrder ?? Number.MAX_SAFE_INTEGER
+    let g = groups.get(name)
+    if (!g) {
+      g = { name, sortOrder, items: [] }
+      groups.set(name, g)
+    }
+    g.items.push(item)
+  }
+  return [...groups.values()].sort(
+    (a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, 'he')
+  )
 }
 
 export default function CartPage() {
@@ -208,36 +232,48 @@ export default function CartPage() {
         </div>
       ) : (
         <>
-          <ul className="px-4 py-4 space-y-2">
-            {order!.items.map((item) => (
-              <li
-                key={item.id}
-                className="bg-white rounded-xl border border-gray-200 p-3 flex gap-3"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-gray-900">
-                    {item.productName}
-                  </div>
-                  <div className="text-xs text-gray-400 font-mono mt-0.5" dir="ltr">
-                    {item.productBarcode}
-                  </div>
-                </div>
-                <div className="flex flex-col items-center justify-center gap-1">
-                  <QtyStepper
-                    qty={item.qtyOrdered}
-                    onChange={(q) => changeQty(item.productId, q)}
-                    size="sm"
-                  />
-                  <button
-                    onClick={() => changeQty(item.productId, 0)}
-                    className="text-xs text-gray-400 hover:text-red-500"
-                  >
-                    {i18n.catalog.remove}
-                  </button>
-                </div>
-              </li>
+          <div className="px-4 py-4 space-y-4">
+            {groupByCategory(order!.items).map((group) => (
+              <section key={group.name}>
+                <h2 className="text-sm font-bold text-gray-500 mb-2 flex items-center gap-2">
+                  <span>{group.name}</span>
+                  <span className="text-xs font-medium text-gray-400">
+                    ({group.items.length})
+                  </span>
+                </h2>
+                <ul className="space-y-2">
+                  {group.items.map((item) => (
+                    <li
+                      key={item.id}
+                      className="bg-white rounded-xl border border-gray-200 p-3 flex gap-3"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-gray-900">
+                          {item.productName}
+                        </div>
+                        <div className="text-xs text-gray-400 font-mono mt-0.5" dir="ltr">
+                          {item.productBarcode}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-center justify-center gap-1">
+                        <QtyStepper
+                          qty={item.qtyOrdered}
+                          onChange={(q) => changeQty(item.productId, q)}
+                          size="sm"
+                        />
+                        <button
+                          onClick={() => changeQty(item.productId, 0)}
+                          className="text-xs text-gray-400 hover:text-red-500"
+                        >
+                          {i18n.catalog.remove}
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
             ))}
-          </ul>
+          </div>
 
           <div className="sticky bottom-0 z-40 bg-white border-t border-gray-200 px-4 py-4 shadow-lg pb-safe">
             <button

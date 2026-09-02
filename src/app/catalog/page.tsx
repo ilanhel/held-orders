@@ -95,6 +95,8 @@ type OrderItem = {
   productBarcode: string
   priceAgorot: number
   qtyOrdered: number
+  categoryName?: string
+  categorySortOrder?: number
 }
 
 type Order = {
@@ -118,6 +120,7 @@ export default function CatalogPage() {
   const [reordering, setReordering] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [pendingSync, setPendingSync] = useState(false)
+  const [cartOpen, setCartOpen] = useState(false)
   const sectionRefs = useRef<Map<string, HTMLElement>>(new Map())
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Optimistic-update bookkeeping: latest desired qty per product not yet
@@ -190,6 +193,38 @@ export default function CatalogPage() {
     () => Array.from(cartMap.values()).reduce((s, n) => s + n, 0),
     [cartMap]
   )
+
+  // Cart summary grouped by category, in catalog order. Category is resolved
+  // from the loaded catalog (also covers optimistic local items); items not in
+  // the catalog (e.g. custom canvas sizes) fall back to the category the
+  // server attached to the order line, then to a trailing "other" group.
+  const cartGroups = useMemo(() => {
+    if (!order) return []
+    const productCategory = new Map<string, { name: string; sortOrder: number }>()
+    for (const c of categories)
+      for (const p of c.products)
+        productCategory.set(p.id, { name: c.name, sortOrder: c.sortOrder })
+    const groups = new Map<
+      string,
+      { name: string; sortOrder: number; items: OrderItem[] }
+    >()
+    for (const item of order.items) {
+      if (item.qtyOrdered <= 0) continue
+      const cat = productCategory.get(item.productId) ?? {
+        name: item.categoryName ?? i18n.orders.uncategorized,
+        sortOrder: item.categorySortOrder ?? Number.MAX_SAFE_INTEGER,
+      }
+      let g = groups.get(cat.name)
+      if (!g) {
+        g = { name: cat.name, sortOrder: cat.sortOrder, items: [] }
+        groups.set(cat.name, g)
+      }
+      g.items.push(item)
+    }
+    return [...groups.values()].sort(
+      (a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, 'he')
+    )
+  }, [order, categories])
 
   async function changeQty(productId: string, qty: number) {
     if (qty < 0) qty = 0
@@ -612,21 +647,60 @@ export default function CatalogPage() {
           </section>
         ))}
 
-      {/* Floating cart bar */}
+      {/* Floating cart bar + expandable category summary */}
       {order && totalQty > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 px-4 py-3 flex items-center justify-between gap-3 shadow-lg pb-safe">
-          <div className="text-sm text-gray-700">
-            <div className="font-semibold">{totalQty} {i18n.orders.items}</div>
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg pb-safe">
+          {cartOpen && (
+            <div className="max-h-[55vh] overflow-y-auto border-b border-gray-200 px-4 py-3">
+              <div className="text-sm font-bold text-gray-800 mb-2">
+                {i18n.orders.cartSummaryTitle}
+              </div>
+              {cartGroups.map((group) => (
+                <div key={group.name} className="mb-3 last:mb-0">
+                  <div className="text-xs font-bold text-gray-500 mb-1">
+                    {group.name}
+                  </div>
+                  <ul className="divide-y divide-gray-100 bg-gray-50 rounded-lg">
+                    {group.items.map((item) => (
+                      <li
+                        key={item.productId}
+                        className="flex items-center gap-2 px-3 py-2 text-sm"
+                      >
+                        <span className="flex-1 min-w-0 text-gray-800">
+                          {item.productName}
+                        </span>
+                        <span className="font-bold text-primary whitespace-nowrap">
+                          ×{item.qtyOrdered}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="px-4 py-3 flex items-center justify-between gap-3">
+            <button
+              onClick={() => setCartOpen((v) => !v)}
+              className="text-right text-sm text-gray-700"
+            >
+              <div className="font-semibold">{totalQty} {i18n.orders.items}</div>
+              <div className="text-xs text-primary font-medium">
+                {cartOpen
+                  ? `▼ ${i18n.orders.cartSummaryClose}`
+                  : `▲ ${i18n.orders.cartSummaryButton}`}
+              </div>
+            </button>
+            <button
+              onClick={async () => {
+                await flushPending()
+                router.push('/cart')
+              }}
+              className="bg-primary text-white font-semibold px-6 py-3 rounded-lg active:bg-red-700"
+            >
+              {i18n.orders.cart} ←
+            </button>
           </div>
-          <button
-            onClick={async () => {
-              await flushPending()
-              router.push('/cart')
-            }}
-            className="bg-primary text-white font-semibold px-6 py-3 rounded-lg active:bg-red-700"
-          >
-            {i18n.orders.cart} ←
-          </button>
         </div>
       )}
     </main>
