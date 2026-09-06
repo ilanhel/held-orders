@@ -34,6 +34,7 @@ export default function AdminHomePage() {
     { label: i18n.admin.usersMgmt, icon: '👥', href: '/admin/users' },
     { label: i18n.admin.ordersMgmt, icon: '📋', href: '/warehouse' },
     { label: i18n.admin.announcementsMgmt, icon: '📢', href: '/warehouse/announcements' },
+    { label: i18n.admin.settingsMgmt, icon: '⚙️', href: '/admin/settings' },
   ]
 
   if (!checked) {

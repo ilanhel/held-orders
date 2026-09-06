@@ -1,6 +1,7 @@
 import { PrismaClient, OrderStatus, ProductStatus, Role, Prisma, WarehouseMark } from '@prisma/client'
 import { NotificationService } from './notifications'
 import { CatalogService } from './catalog.service'
+import { SettingsService } from './settings.service'
 import { OrderExportService } from './export.service'
 import type { NotificationEvent, NotificationRecipient } from './notifications/types'
 
@@ -274,9 +275,48 @@ export class OrderService {
         },
         storeRecipients
       )
+
+      // Lit frames + canvas frames are produced at a separate warehouse —
+      // forward those lines to a dedicated WhatsApp number (admin-configured).
+      // Never fails the submit.
+      try {
+        await this.notifySpecialFrames(view)
+      } catch (e) {
+        console.error('[OrderService] special-frames notification failed:', e)
+      }
     }
 
     return view
+  }
+
+  /**
+   * Lit frames (name contains "מסגרת מוארת") and canvas frames (category
+   * "בלינדרמים", incl. franchisee custom sizes) are prepared at a different
+   * warehouse — orders containing them trigger an extra WhatsApp message.
+   */
+  static isSpecialFrameItem(item: { productName: string; categoryName: string }): boolean {
+    return item.categoryName === 'בלינדרמים' || item.productName.includes('מסגרת מוארת')
+  }
+
+  /** Send the special-frames lines of a submitted order to the configured number (no-op when unset or no matching items). */
+  private static async notifySpecialFrames(view: OrderView): Promise<void> {
+    const lines = view.items
+      .filter((i) => this.isSpecialFrameItem(i))
+      .map((i) => ({ name: i.productName, qty: i.qtyOrdered }))
+    if (lines.length === 0) return
+
+    const phone = await SettingsService.getSpecialFramesPhone()
+    if (!phone) return
+
+    await NotificationService.send(
+      {
+        type: 'ORDER_SPECIAL_FRAMES',
+        orderNumber: view.number!,
+        storeName: view.storeName,
+        lines,
+      },
+      { phone, name: 'מסגרות' }
+    )
   }
 
   /**

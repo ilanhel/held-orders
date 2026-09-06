@@ -219,6 +219,18 @@ export const i18n = {
     storesMgmt: 'ניהול סניפים',
     usersMgmt: 'ניהול משתמשים',
     categoriesMgmt: 'ניהול קטגוריות',
+    settingsMgmt: 'הגדרות',
+    settings: {
+      title: 'הגדרות מערכת',
+      specialFramesPhone: 'וואטסאפ למסגרות מוארות ומסגרות קנבס',
+      specialFramesPhoneHint:
+        'כל הזמנה שנשלחת למחסן וכוללת מסגרת מוארת או מסגרת קנבס (בלינדרם) תישלח בהודעת וואטסאפ נפרדת גם למספר הזה. השאירו ריק כדי לבטל.',
+      specialFramesPhonePlaceholder: 'לדוגמה: 0501234567',
+      save: 'שמירה',
+      saving: 'שומר...',
+      saved: 'ההגדרות נשמרו',
+      invalidPhone: 'מספר וואטסאפ לא תקין',
+    },
     categories: {
       title: 'ניהול קטגוריות',
       newCategory: 'קטגוריה חדשה',

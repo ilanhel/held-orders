@@ -230,6 +230,14 @@ model AnnouncementAck {
   @@index([announcementId])
 }
 
+// Key-value app settings editable from the admin UI (e.g. the WhatsApp
+// number that receives lit-frame/canvas-frame order lines).
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
 model NotificationLog {
   id        String   @id @default(cuid())
   event     String

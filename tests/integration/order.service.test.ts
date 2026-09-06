@@ -17,6 +17,7 @@ let prodHidden: { id: string }
 
 async function resetDb() {
   await prisma.notificationLog.deleteMany()
+  await prisma.appSetting.deleteMany()
   await prisma.orderStatusHistory.deleteMany()
   await prisma.orderItem.deleteMany()
   await prisma.order.deleteMany()
@@ -350,6 +351,79 @@ describe('OrderService', () => {
       )
       expect(confirmations).toHaveLength(1)
       expect(confirmations[0].recipient.phone).toBe('0551111111')
+    })
+  })
+
+  describe('special frames notification (מסגרות מוארות + בלינדרמים)', () => {
+    let prodCanvas: { id: string }
+    let prodLit: { id: string }
+
+    beforeEach(async () => {
+      const canvasCat = await prisma.category.create({
+        data: { name: 'בלינדרמים', sortOrder: 20 },
+      })
+      const litCat = await prisma.category.create({
+        data: { name: 'מיוחדים', sortOrder: 30 },
+      })
+      const canvas = await prisma.product.create({
+        data: { name: 'מסגרת קנבס 30x40', barcode: 'TST-CNV', categoryId: canvasCat.id, priceAgorot: 0, status: ProductStatus.ACTIVE },
+      })
+      const lit = await prisma.product.create({
+        data: { name: 'מסגרת מוארת 20x30', barcode: 'TST-LIT', categoryId: litCat.id, priceAgorot: 0, status: ProductStatus.ACTIVE },
+      })
+      prodCanvas = { id: canvas.id }
+      prodLit = { id: lit.id }
+    })
+
+    it('sends only the special lines to the configured number on submit', async () => {
+      await prisma.appSetting.create({
+        data: { key: 'specialFramesPhone', value: '0509999999' },
+      })
+      const d = await OrderService.getOrCreateDraft(storeId, userId)
+      await OrderService.setItemQty(d.id, prodA.id, 1) // regular — excluded
+      await OrderService.setItemQty(d.id, prodCanvas.id, 3)
+      await OrderService.setItemQty(d.id, prodLit.id, 2)
+      const submitted = await OrderService.submitDraft(d.id, userId)
+
+      const special = notifications.sent.filter(
+        (n) => n.event.type === 'ORDER_SPECIAL_FRAMES'
+      )
+      expect(special).toHaveLength(1)
+      expect(special[0].recipient.phone).toBe('0509999999')
+      const event = special[0].event
+      if (event.type !== 'ORDER_SPECIAL_FRAMES') throw new Error('unexpected event')
+      expect(event.orderNumber).toBe(submitted.number)
+      expect(event.lines).toHaveLength(2)
+      const names = event.lines.map((l) => l.name).sort()
+      expect(names).toEqual(['מסגרת מוארת 20x30', 'מסגרת קנבס 30x40'])
+      expect(event.lines.find((l) => l.name === 'מסגרת קנבס 30x40')?.qty).toBe(3)
+
+      // existing notifications are untouched
+      expect(notifications.sent.some((n) => n.event.type === 'ORDER_SUBMITTED')).toBe(true)
+      expect(notifications.sent.some((n) => n.event.type === 'ORDER_CONFIRMATION')).toBe(true)
+    })
+
+    it('does not send when the order has no special items', async () => {
+      await prisma.appSetting.create({
+        data: { key: 'specialFramesPhone', value: '0509999999' },
+      })
+      const d = await OrderService.getOrCreateDraft(storeId, userId)
+      await OrderService.setItemQty(d.id, prodA.id, 1)
+      await OrderService.submitDraft(d.id, userId)
+
+      expect(
+        notifications.sent.filter((n) => n.event.type === 'ORDER_SPECIAL_FRAMES')
+      ).toHaveLength(0)
+    })
+
+    it('does not send when no number is configured', async () => {
+      const d = await OrderService.getOrCreateDraft(storeId, userId)
+      await OrderService.setItemQty(d.id, prodCanvas.id, 1)
+      await OrderService.submitDraft(d.id, userId)
+
+      expect(
+        notifications.sent.filter((n) => n.event.type === 'ORDER_SPECIAL_FRAMES')
+      ).toHaveLength(0)
     })
   })
 
