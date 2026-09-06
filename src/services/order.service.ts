@@ -276,9 +276,9 @@ export class OrderService {
         storeRecipients
       )
 
-      // Lit frames + canvas frames are produced at a separate warehouse —
-      // forward those lines to a dedicated WhatsApp number (admin-configured).
-      // Never fails the submit.
+      // Lit frames, canvas frames and paper/nylon bags are produced at a
+      // separate warehouse — forward those lines to a dedicated WhatsApp
+      // number (admin-configured). Never fails the submit.
       try {
         await this.notifySpecialFrames(view)
       } catch (e) {
@@ -290,12 +290,19 @@ export class OrderService {
   }
 
   /**
-   * Lit frames (name contains "מסגרת מוארת") and canvas frames (category
-   * "בלינדרמים", incl. franchisee custom sizes) are prepared at a different
-   * warehouse — orders containing them trigger an extra WhatsApp message.
+   * Lit frames (name contains "מסגרת מוארת"), canvas frames (category
+   * "בלינדרמים", incl. franchisee custom sizes) and paper/nylon bags
+   * ("ארגז שקיות", "שקיות ניילון" — NOT צלופן/צהובה ממותגת) are
+   * prepared at a different warehouse — orders containing them trigger an
+   * extra WhatsApp message.
    */
   static isSpecialFrameItem(item: { productName: string; categoryName: string }): boolean {
-    return item.categoryName === 'בלינדרמים' || item.productName.includes('מסגרת מוארת')
+    return (
+      item.categoryName === 'בלינדרמים' ||
+      item.productName.includes('מסגרת מוארת') ||
+      item.productName.includes('ארגז שקיות') ||
+      item.productName.includes('שקיות ניילון')
+    )
   }
 
   /** Send the special-frames lines of a submitted order to the configured number (no-op when unset or no matching items). */

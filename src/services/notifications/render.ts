@@ -44,7 +44,7 @@ export function renderMessage(event: NotificationEvent): string {
     }
     case 'ORDER_SPECIAL_FRAMES': {
       const lines = event.lines.map((l) => `• ${l.name} — ${l.qty} יח׳`)
-      return `🖼️ מסגרות מוארות / מסגרות קנבס\nהזמנה #${event.orderNumber} — ${event.storeName}:\n${lines.join('\n')}`
+      return `🖼️ מסגרות מוארות / מסגרות קנבס / שקיות\nהזמנה #${event.orderNumber} — ${event.storeName}:\n${lines.join('\n')}`
     }
   }
 }

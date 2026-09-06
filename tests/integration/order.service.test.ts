@@ -354,9 +354,12 @@ describe('OrderService', () => {
     })
   })
 
-  describe('special frames notification (מסגרות מוארות + בלינדרמים)', () => {
+  describe('special frames notification (מסגרות מוארות + בלינדרמים + שקיות)', () => {
     let prodCanvas: { id: string }
     let prodLit: { id: string }
+    let prodBagBox: { id: string }
+    let prodNylon: { id: string }
+    let prodCellophane: { id: string }
 
     beforeEach(async () => {
       const canvasCat = await prisma.category.create({
@@ -365,14 +368,29 @@ describe('OrderService', () => {
       const litCat = await prisma.category.create({
         data: { name: 'מיוחדים', sortOrder: 30 },
       })
+      const packagingCat = await prisma.category.create({
+        data: { name: 'אריזות', sortOrder: 40 },
+      })
       const canvas = await prisma.product.create({
         data: { name: 'מסגרת קנבס 30x40', barcode: 'TST-CNV', categoryId: canvasCat.id, priceAgorot: 0, status: ProductStatus.ACTIVE },
       })
       const lit = await prisma.product.create({
         data: { name: 'מסגרת מוארת 20x30', barcode: 'TST-LIT', categoryId: litCat.id, priceAgorot: 0, status: ProductStatus.ACTIVE },
       })
+      const bagBox = await prisma.product.create({
+        data: { name: 'ארגז שקיות גדולות', barcode: 'TST-BAGBOX', categoryId: packagingCat.id, priceAgorot: 0, status: ProductStatus.ACTIVE },
+      })
+      const nylon = await prisma.product.create({
+        data: { name: 'שקיות ניילון 20/30', barcode: 'TST-NYLON', categoryId: packagingCat.id, priceAgorot: 0, status: ProductStatus.ACTIVE },
+      })
+      const cellophane = await prisma.product.create({
+        data: { name: 'שקיות צלופן 10X15', barcode: 'TST-CELL', categoryId: packagingCat.id, priceAgorot: 0, status: ProductStatus.ACTIVE },
+      })
       prodCanvas = { id: canvas.id }
       prodLit = { id: lit.id }
+      prodBagBox = { id: bagBox.id }
+      prodNylon = { id: nylon.id }
+      prodCellophane = { id: cellophane.id }
     })
 
     it('sends only the special lines to the configured number on submit', async () => {
@@ -401,6 +419,27 @@ describe('OrderService', () => {
       // existing notifications are untouched
       expect(notifications.sent.some((n) => n.event.type === 'ORDER_SUBMITTED')).toBe(true)
       expect(notifications.sent.some((n) => n.event.type === 'ORDER_CONFIRMATION')).toBe(true)
+    })
+
+    it('includes paper/nylon bags but not cellophane bags', async () => {
+      await prisma.appSetting.create({
+        data: { key: 'specialFramesPhone', value: '0509999999' },
+      })
+      const d = await OrderService.getOrCreateDraft(storeId, userId)
+      await OrderService.setItemQty(d.id, prodBagBox.id, 2)
+      await OrderService.setItemQty(d.id, prodNylon.id, 4)
+      await OrderService.setItemQty(d.id, prodCellophane.id, 1) // excluded
+      await OrderService.submitDraft(d.id, userId)
+
+      const special = notifications.sent.filter(
+        (n) => n.event.type === 'ORDER_SPECIAL_FRAMES'
+      )
+      expect(special).toHaveLength(1)
+      const event = special[0].event
+      if (event.type !== 'ORDER_SPECIAL_FRAMES') throw new Error('unexpected event')
+      const names = event.lines.map((l) => l.name).sort()
+      expect(names).toEqual(['ארגז שקיות גדולות', 'שקיות ניילון 20/30'])
+      expect(event.lines.find((l) => l.name === 'שקיות ניילון 20/30')?.qty).toBe(4)
     })
 
     it('does not send when the order has no special items', async () => {
