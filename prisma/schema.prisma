@@ -53,6 +53,7 @@ model Category {
   name      String    @unique
   sortOrder Int       @default(999)
   products  Product[]
+  specialForwards SpecialForwardCategory[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
@@ -84,6 +85,7 @@ model Product {
   orderItems      OrderItem[]
   barcodeAliases  ProductBarcodeAlias[]
   storeBarcodes   StoreProductBarcode[]
+  specialForwards SpecialForwardProduct[]
 
   @@index([categoryId])
   @@index([status])
@@ -236,6 +238,42 @@ model AppSetting {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+// A WhatsApp forwarding destination: when a submitted order contains any of
+// the linked products (or products in the linked categories), those lines are
+// sent in a separate WhatsApp message to `phone`. Admin-managed.
+model SpecialForward {
+  id         String   @id @default(cuid())
+  name       String
+  phone      String
+  active     Boolean  @default(true)
+  products   SpecialForwardProduct[]
+  categories SpecialForwardCategory[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model SpecialForwardProduct {
+  id        String         @id @default(cuid())
+  forwardId String
+  forward   SpecialForward @relation(fields: [forwardId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([forwardId, productId])
+  @@index([productId])
+}
+
+model SpecialForwardCategory {
+  id         String         @id @default(cuid())
+  forwardId  String
+  forward    SpecialForward @relation(fields: [forwardId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   Category       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([forwardId, categoryId])
+  @@index([categoryId])
 }
 
 model NotificationLog {

@@ -16,7 +16,7 @@ export type NotificationEvent =
   | { type: 'ANNOUNCEMENT'; title: string; body: string }
   | { type: 'OTP_CODE'; code: string; expiryMinutes: number }
   | { type: 'ORDER_ERP_INTAKE'; orderNumber: number; storeName: string; lines: Array<{ barcode: string; qty: number }> }
-  | { type: 'ORDER_SPECIAL_FRAMES'; orderNumber: number; storeName: string; lines: Array<{ name: string; qty: number }> }
+  | { type: 'ORDER_SPECIAL_FRAMES'; orderNumber: number; storeName: string; forwardName?: string; lines: Array<{ name: string; qty: number }> }
 
 export interface NotificationRecipient {
   phone: string

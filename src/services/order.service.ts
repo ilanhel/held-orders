@@ -1,7 +1,7 @@
 import { PrismaClient, OrderStatus, ProductStatus, Role, Prisma, WarehouseMark } from '@prisma/client'
 import { NotificationService } from './notifications'
 import { CatalogService } from './catalog.service'
-import { SettingsService } from './settings.service'
+import { ForwardService } from './forward.service'
 import { OrderExportService } from './export.service'
 import type { NotificationEvent, NotificationRecipient } from './notifications/types'
 
@@ -276,13 +276,13 @@ export class OrderService {
         storeRecipients
       )
 
-      // Lit frames, canvas frames and paper/nylon bags are produced at a
-      // separate warehouse — forward those lines to a dedicated WhatsApp
-      // number (admin-configured). Never fails the submit.
+      // Some items (lit frames, canvas frames, bags…) are produced at other
+      // warehouses — forward matching lines to the admin-configured WhatsApp
+      // destinations. Never fails the submit.
       try {
-        await this.notifySpecialFrames(view)
+        await this.notifySpecialForwards(view)
       } catch (e) {
-        console.error('[OrderService] special-frames notification failed:', e)
+        console.error('[OrderService] special-forwards notification failed:', e)
       }
     }
 
@@ -290,40 +290,31 @@ export class OrderService {
   }
 
   /**
-   * Lit frames (name contains "מסגרת מוארת"), canvas frames (category
-   * "בלינדרמים", incl. franchisee custom sizes) and paper/nylon bags
-   * ("ארגז שקיות", "שקיות ניילון" — NOT צלופן/צהובה ממותגת) are
-   * prepared at a different warehouse — orders containing them trigger an
-   * extra WhatsApp message.
+   * Send matching order lines to each active forwarding destination
+   * (admin-managed products/categories per destination). One WhatsApp message
+   * per destination; no-op when nothing matches or none are configured.
    */
-  static isSpecialFrameItem(item: { productName: string; categoryName: string }): boolean {
-    return (
-      item.categoryName === 'בלינדרמים' ||
-      item.productName.includes('מסגרת מוארת') ||
-      item.productName.includes('ארגז שקיות') ||
-      item.productName.includes('שקיות ניילון')
-    )
-  }
+  private static async notifySpecialForwards(view: OrderView): Promise<void> {
+    const matchers = await ForwardService.listMatchers()
+    if (matchers.length === 0) return
 
-  /** Send the special-frames lines of a submitted order to the configured number (no-op when unset or no matching items). */
-  private static async notifySpecialFrames(view: OrderView): Promise<void> {
-    const lines = view.items
-      .filter((i) => this.isSpecialFrameItem(i))
-      .map((i) => ({ name: i.productName, qty: i.qtyOrdered }))
-    if (lines.length === 0) return
+    for (const m of matchers) {
+      const lines = view.items
+        .filter((i) => m.productIds.has(i.productId) || m.categoryNames.has(i.categoryName))
+        .map((i) => ({ name: i.productName, qty: i.qtyOrdered }))
+      if (lines.length === 0) continue
 
-    const phone = await SettingsService.getSpecialFramesPhone()
-    if (!phone) return
-
-    await NotificationService.send(
-      {
-        type: 'ORDER_SPECIAL_FRAMES',
-        orderNumber: view.number!,
-        storeName: view.storeName,
-        lines,
-      },
-      { phone, name: 'מסגרות' }
-    )
+      await NotificationService.send(
+        {
+          type: 'ORDER_SPECIAL_FRAMES',
+          orderNumber: view.number!,
+          storeName: view.storeName,
+          forwardName: m.name,
+          lines,
+        },
+        { phone: m.phone, name: m.name }
+      )
+    }
   }
 
   /**

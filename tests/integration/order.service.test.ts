@@ -18,6 +18,7 @@ let prodHidden: { id: string }
 async function resetDb() {
   await prisma.notificationLog.deleteMany()
   await prisma.appSetting.deleteMany()
+  await prisma.specialForward.deleteMany()
   await prisma.orderStatusHistory.deleteMany()
   await prisma.orderItem.deleteMany()
   await prisma.order.deleteMany()
@@ -354,12 +355,11 @@ describe('OrderService', () => {
     })
   })
 
-  describe('special frames notification (מסגרות מוארות + בלינדרמים + שקיות)', () => {
+  describe('special forwards notification (יעדי וואטסאפ לפריטים מיוחדים)', () => {
+    let canvasCatId: string
     let prodCanvas: { id: string }
     let prodLit: { id: string }
-    let prodBagBox: { id: string }
     let prodNylon: { id: string }
-    let prodCellophane: { id: string }
 
     beforeEach(async () => {
       const canvasCat = await prisma.category.create({
@@ -377,25 +377,39 @@ describe('OrderService', () => {
       const lit = await prisma.product.create({
         data: { name: 'מסגרת מוארת 20x30', barcode: 'TST-LIT', categoryId: litCat.id, priceAgorot: 0, status: ProductStatus.ACTIVE },
       })
-      const bagBox = await prisma.product.create({
-        data: { name: 'ארגז שקיות גדולות', barcode: 'TST-BAGBOX', categoryId: packagingCat.id, priceAgorot: 0, status: ProductStatus.ACTIVE },
-      })
       const nylon = await prisma.product.create({
         data: { name: 'שקיות ניילון 20/30', barcode: 'TST-NYLON', categoryId: packagingCat.id, priceAgorot: 0, status: ProductStatus.ACTIVE },
       })
-      const cellophane = await prisma.product.create({
-        data: { name: 'שקיות צלופן 10X15', barcode: 'TST-CELL', categoryId: packagingCat.id, priceAgorot: 0, status: ProductStatus.ACTIVE },
-      })
+      canvasCatId = canvasCat.id
       prodCanvas = { id: canvas.id }
       prodLit = { id: lit.id }
-      prodBagBox = { id: bagBox.id }
       prodNylon = { id: nylon.id }
-      prodCellophane = { id: cellophane.id }
     })
 
-    it('sends only the special lines to the configured number on submit', async () => {
-      await prisma.appSetting.create({
-        data: { key: 'specialFramesPhone', value: '0509999999' },
+    function createForward(input: {
+      name: string
+      phone: string
+      active?: boolean
+      productIds?: string[]
+      categoryIds?: string[]
+    }) {
+      return prisma.specialForward.create({
+        data: {
+          name: input.name,
+          phone: input.phone,
+          active: input.active ?? true,
+          products: { create: (input.productIds ?? []).map((productId) => ({ productId })) },
+          categories: { create: (input.categoryIds ?? []).map((categoryId) => ({ categoryId })) },
+        },
+      })
+    }
+
+    it('sends only matching lines to the destination (category + product match)', async () => {
+      await createForward({
+        name: 'מחסן מסגרות',
+        phone: '0509999999',
+        productIds: [prodLit.id],
+        categoryIds: [canvasCatId],
       })
       const d = await OrderService.getOrCreateDraft(storeId, userId)
       await OrderService.setItemQty(d.id, prodA.id, 1) // regular — excluded
@@ -411,7 +425,7 @@ describe('OrderService', () => {
       const event = special[0].event
       if (event.type !== 'ORDER_SPECIAL_FRAMES') throw new Error('unexpected event')
       expect(event.orderNumber).toBe(submitted.number)
-      expect(event.lines).toHaveLength(2)
+      expect(event.forwardName).toBe('מחסן מסגרות')
       const names = event.lines.map((l) => l.name).sort()
       expect(names).toEqual(['מסגרת מוארת 20x30', 'מסגרת קנבס 30x40'])
       expect(event.lines.find((l) => l.name === 'מסגרת קנבס 30x40')?.qty).toBe(3)
@@ -421,30 +435,43 @@ describe('OrderService', () => {
       expect(notifications.sent.some((n) => n.event.type === 'ORDER_CONFIRMATION')).toBe(true)
     })
 
-    it('includes paper/nylon bags but not cellophane bags', async () => {
-      await prisma.appSetting.create({
-        data: { key: 'specialFramesPhone', value: '0509999999' },
+    it('sends to each destination only its own matching items', async () => {
+      await createForward({
+        name: 'מחסן מסגרות',
+        phone: '0501111111',
+        productIds: [prodLit.id],
+        categoryIds: [canvasCatId],
+      })
+      await createForward({
+        name: 'מחסן שקיות',
+        phone: '0502222222',
+        productIds: [prodNylon.id],
       })
       const d = await OrderService.getOrCreateDraft(storeId, userId)
-      await OrderService.setItemQty(d.id, prodBagBox.id, 2)
+      await OrderService.setItemQty(d.id, prodCanvas.id, 1)
       await OrderService.setItemQty(d.id, prodNylon.id, 4)
-      await OrderService.setItemQty(d.id, prodCellophane.id, 1) // excluded
+      await OrderService.setItemQty(d.id, prodA.id, 1)
       await OrderService.submitDraft(d.id, userId)
 
       const special = notifications.sent.filter(
         (n) => n.event.type === 'ORDER_SPECIAL_FRAMES'
       )
-      expect(special).toHaveLength(1)
-      const event = special[0].event
-      if (event.type !== 'ORDER_SPECIAL_FRAMES') throw new Error('unexpected event')
-      const names = event.lines.map((l) => l.name).sort()
-      expect(names).toEqual(['ארגז שקיות גדולות', 'שקיות ניילון 20/30'])
-      expect(event.lines.find((l) => l.name === 'שקיות ניילון 20/30')?.qty).toBe(4)
+      expect(special).toHaveLength(2)
+      const byPhone = new Map(special.map((n) => [n.recipient.phone, n.event]))
+      const framesEvent = byPhone.get('0501111111')
+      const bagsEvent = byPhone.get('0502222222')
+      if (framesEvent?.type !== 'ORDER_SPECIAL_FRAMES') throw new Error('missing frames event')
+      if (bagsEvent?.type !== 'ORDER_SPECIAL_FRAMES') throw new Error('missing bags event')
+      expect(framesEvent.lines.map((l) => l.name)).toEqual(['מסגרת קנבס 30x40'])
+      expect(bagsEvent.lines.map((l) => l.name)).toEqual(['שקיות ניילון 20/30'])
+      expect(bagsEvent.lines[0].qty).toBe(4)
     })
 
-    it('does not send when the order has no special items', async () => {
-      await prisma.appSetting.create({
-        data: { key: 'specialFramesPhone', value: '0509999999' },
+    it('skips destinations with no matching items', async () => {
+      await createForward({
+        name: 'מחסן שקיות',
+        phone: '0502222222',
+        productIds: [prodNylon.id],
       })
       const d = await OrderService.getOrCreateDraft(storeId, userId)
       await OrderService.setItemQty(d.id, prodA.id, 1)
@@ -455,7 +482,23 @@ describe('OrderService', () => {
       ).toHaveLength(0)
     })
 
-    it('does not send when no number is configured', async () => {
+    it('ignores inactive destinations', async () => {
+      await createForward({
+        name: 'מחסן מסגרות',
+        phone: '0509999999',
+        active: false,
+        categoryIds: [canvasCatId],
+      })
+      const d = await OrderService.getOrCreateDraft(storeId, userId)
+      await OrderService.setItemQty(d.id, prodCanvas.id, 1)
+      await OrderService.submitDraft(d.id, userId)
+
+      expect(
+        notifications.sent.filter((n) => n.event.type === 'ORDER_SPECIAL_FRAMES')
+      ).toHaveLength(0)
+    })
+
+    it('does not send when no destinations are configured', async () => {
       const d = await OrderService.getOrCreateDraft(storeId, userId)
       await OrderService.setItemQty(d.id, prodCanvas.id, 1)
       await OrderService.submitDraft(d.id, userId)
