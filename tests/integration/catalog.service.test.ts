@@ -224,6 +224,65 @@ describe('CatalogService', () => {
     })
   })
 
+  describe('frame colors (listFrameSizes + addFrameColor)', () => {
+    async function seedFrames() {
+      const cat = await prisma.category.create({ data: { name: 'מסגרות', sortOrder: 40 } })
+      // Two size groups, wood is the billing SKU (own barcode, no invoiceBarcode)
+      await prisma.product.createMany({
+        data: [
+          { name: 'מסגרת 10x15 עץ', barcode: '7291027110152', categoryId: cat.id, priceAgorot: 0, groupName: 'מסגרת 10x15' },
+          { name: 'מסגרת 10x15 לבנה', barcode: '7460', categoryId: cat.id, priceAgorot: 0, groupName: 'מסגרת 10x15', invoiceBarcode: '7291027110152' },
+          { name: 'מסגרת 10x15 שחורה', barcode: '60041', categoryId: cat.id, priceAgorot: 0, groupName: 'מסגרת 10x15', invoiceBarcode: '7291027110152' },
+          { name: 'מסגרת 30x40 עץ', barcode: '7291027130402', categoryId: cat.id, priceAgorot: 0, groupName: 'מסגרת 30x40' },
+        ],
+      })
+      return cat
+    }
+
+    it('lists size groups with billing barcode and colors', async () => {
+      await seedFrames()
+      const sizes = await CatalogService.listFrameSizes()
+      expect(sizes.map((s) => s.size)).toEqual(['10x15', '30x40'])
+      const s1015 = sizes[0]
+      expect(s1015.barcode).toBe('7291027110152')
+      expect(s1015.colors.sort()).toEqual(['לבנה', 'עץ', 'שחורה'].sort())
+      expect(sizes[1].barcode).toBe('7291027130402')
+    })
+
+    it('addFrameColor creates a product per size with the size billing barcode', async () => {
+      const cat = await seedFrames()
+      const result = await CatalogService.addFrameColor('זהב', ['10x15', '30x40'])
+      expect(result).toEqual({ created: 2, skipped: 0 })
+
+      const gold1015 = await prisma.product.findFirst({ where: { name: 'מסגרת 10x15 זהב' } })
+      expect(gold1015).not.toBeNull()
+      expect(gold1015?.groupName).toBe('מסגרת 10x15')
+      expect(gold1015?.invoiceBarcode).toBe('7291027110152')
+      expect(gold1015?.categoryId).toBe(cat.id)
+      expect(gold1015?.priceAgorot).toBe(0)
+      expect(gold1015?.status).toBe(ProductStatus.ACTIVE)
+      expect(/^6\d{4}$/.test(gold1015!.barcode)).toBe(true)
+
+      const gold3040 = await prisma.product.findFirst({ where: { name: 'מסגרת 30x40 זהב' } })
+      expect(gold3040?.invoiceBarcode).toBe('7291027130402')
+      expect(gold3040?.barcode).not.toBe(gold1015?.barcode)
+    })
+
+    it('skips sizes that already have the color', async () => {
+      await seedFrames()
+      await CatalogService.addFrameColor('זהב', ['10x15'])
+      const result = await CatalogService.addFrameColor('זהב', ['10x15', '30x40'])
+      expect(result).toEqual({ created: 1, skipped: 1 })
+    })
+
+    it('rejects invalid color or unknown size', async () => {
+      await seedFrames()
+      await expect(CatalogService.addFrameColor('  ', ['10x15'])).rejects.toThrow('INVALID_COLOR')
+      await expect(CatalogService.addFrameColor('זהב', [])).rejects.toThrow('INVALID_SIZES')
+      await expect(CatalogService.addFrameColor('זהב', ['99x99'])).rejects.toThrow('FRAME_GROUP_NOT_FOUND')
+    })
+  })
+
   describe('getByBarcode', () => {
     it('returns product for known active barcode', async () => {
       const product = await CatalogService.getByBarcode('7290000010001')

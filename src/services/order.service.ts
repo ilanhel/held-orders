@@ -190,6 +190,7 @@ export class OrderService {
     // Resolve per-store barcode for multi-barcode products (sticky + balanced).
     // Only products that actually have barcode aliases are resolved — large
     // orders would otherwise fire one query per line and time out on Vercel.
+    // Products with an invoiceBarcode override skip alias resolution entirely.
     const aliasCounts = await prisma.productBarcodeAlias.groupBy({
       by: ['productId'],
       where: { productId: { in: productIds } },
@@ -198,6 +199,7 @@ export class OrderService {
     const multiBarcodeIds = aliasCounts
       .filter((a) => a._count._all >= 2)
       .map((a) => a.productId)
+      .filter((id) => !productMap.get(id)?.invoiceBarcode)
     const assignedBarcodes = new Map<string, string>()
     for (const productId of multiBarcodeIds) {
       const assigned = await this.resolveStoreBarcode(order.storeId, productId)
@@ -209,7 +211,7 @@ export class OrderService {
     const itemValues = order.items.map((item) => {
       const p = productMap.get(item.productId)!
       return Prisma.sql`(${item.id}, ${p.priceAgorot}::int, ${p.name}::text, ${
-        assignedBarcodes.get(item.productId) ?? p.barcode
+        p.invoiceBarcode ?? assignedBarcodes.get(item.productId) ?? p.barcode
       }::text)`
     })
     await prisma.$transaction([

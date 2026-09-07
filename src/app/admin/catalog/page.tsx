@@ -20,6 +20,7 @@ type Product = {
   orderNote: string | null
   groupName: string | null
   unitsPerPack: number
+  invoiceBarcode: string | null
 }
 
 type Category = { id: string; name: string; sortOrder: number }
@@ -45,6 +46,7 @@ export default function AdminCatalogPage() {
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const [showFrameColorForm, setShowFrameColorForm] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [barcodesOpenId, setBarcodesOpenId] = useState<string | null>(null)
@@ -236,6 +238,7 @@ export default function AdminCatalogPage() {
       orderNote: string | null
       groupName: string | null
       unitsPerPack: number
+      invoiceBarcode: string | null
     }
   ): Promise<boolean> {
     setBusyId(p.id)
@@ -264,6 +267,7 @@ export default function AdminCatalogPage() {
                 orderNote: updated.orderNote,
                 groupName: updated.groupName,
                 unitsPerPack: updated.unitsPerPack,
+                invoiceBarcode: updated.invoiceBarcode,
               }
             : x
         )
@@ -359,12 +363,20 @@ export default function AdminCatalogPage() {
           <span className="text-sm text-gray-500">
             {products.length} {t.productCount}
           </span>
-          <button
-            onClick={() => setShowForm((v) => !v)}
-            className="bg-primary text-white rounded-lg px-4 py-2 text-sm font-semibold hover:opacity-90"
-          >
-            {showForm ? t.cancel : `+ ${t.newProduct}`}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowFrameColorForm((v) => !v)}
+              className="bg-white border border-primary text-primary rounded-lg px-4 py-2 text-sm font-semibold hover:bg-gray-50"
+            >
+              {showFrameColorForm ? t.cancel : `🎨 ${t.frameColorNew}`}
+            </button>
+            <button
+              onClick={() => setShowForm((v) => !v)}
+              className="bg-primary text-white rounded-lg px-4 py-2 text-sm font-semibold hover:opacity-90"
+            >
+              {showForm ? t.cancel : `+ ${t.newProduct}`}
+            </button>
+          </div>
         </div>
 
         {message && (
@@ -386,6 +398,17 @@ export default function AdminCatalogPage() {
               {i18n.common.retry}
             </button>
           </div>
+        )}
+
+        {showFrameColorForm && (
+          <FrameColorForm
+            onDone={(msg) => {
+              setShowFrameColorForm(false)
+              flash(msg)
+              void load()
+            }}
+            onError={setError}
+          />
         )}
 
         {showForm && (
@@ -1045,6 +1068,7 @@ function EditProductForm({
     orderNote: string | null
     groupName: string | null
     unitsPerPack: number
+    invoiceBarcode: string | null
   }) => void
 }) {
   const [name, setName] = useState(product.name)
@@ -1053,6 +1077,7 @@ function EditProductForm({
   const [orderNote, setOrderNote] = useState(product.orderNote ?? '')
   const [groupName, setGroupName] = useState(product.groupName ?? '')
   const [unitsPerPack, setUnitsPerPack] = useState(String(product.unitsPerPack ?? 1))
+  const [invoiceBarcode, setInvoiceBarcode] = useState(product.invoiceBarcode ?? '')
 
   const unitsValue = Number(unitsPerPack)
   const unitsValid = Number.isInteger(unitsValue) && unitsValue >= 1
@@ -1067,6 +1092,7 @@ function EditProductForm({
       orderNote: orderNote.trim() || null,
       groupName: groupName.trim() || null,
       unitsPerPack: unitsValue,
+      invoiceBarcode: invoiceBarcode.trim() || null,
     })
   }
 
@@ -1140,6 +1166,17 @@ function EditProductForm({
             className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-left focus:border-primary focus:outline-none disabled:opacity-50"
           />
         </label>
+        <label className="block sm:col-span-2">
+          <span className="text-xs text-gray-500">{t.invoiceBarcode}</span>
+          <input
+            value={invoiceBarcode}
+            disabled={disabled}
+            maxLength={64}
+            placeholder={t.invoiceBarcodePlaceholder}
+            onChange={(e) => setInvoiceBarcode(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-left focus:border-primary focus:outline-none disabled:opacity-50"
+          />
+        </label>
       </div>
       <div className="flex gap-2 mt-4">
         <button
@@ -1157,6 +1194,133 @@ function EditProductForm({
           {t.cancel}
         </button>
       </div>
+    </div>
+  )
+}
+
+/**
+ * Add a new color to the plain frame size groups: pick a color name and the
+ * sizes it applies to. Creates one product per size with the size's billing
+ * barcode (invoiceBarcode) so all colors invoice under one SKU per size.
+ */
+function FrameColorForm({
+  onDone,
+  onError,
+}: {
+  onDone: (msg: string) => void
+  onError: (msg: string) => void
+}) {
+  const [sizes, setSizes] = useState<
+    Array<{ groupName: string; size: string; barcode: string; colors: string[] }>
+  >([])
+  const [loading, setLoading] = useState(true)
+  const [colorName, setColorName] = useState('')
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/frame-colors')
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return
+        const list = data.sizes ?? []
+        setSizes(list)
+        setSelected(new Set(list.map((s: { size: string }) => s.size)))
+      })
+      .catch(() => onError(i18n.errors.network))
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function toggle(size: string) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(size)) next.delete(size)
+      else next.add(size)
+      return next
+    })
+  }
+
+  async function submit() {
+    if (!colorName.trim() || selected.size === 0) return
+    setSaving(true)
+    try {
+      const res = await fetch('/api/frame-colors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ colorName: colorName.trim(), sizes: [...selected] }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        onError(data?.error?.message ?? i18n.errors.serverError)
+        return
+      }
+      onDone(
+        t.frameColorCreated
+          .replace('{count}', String(data.created))
+          .replace('{skipped}', String(data.skipped))
+      )
+    } catch {
+      onError(i18n.errors.network)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-purple-200 ring-1 ring-purple-100 p-4 mb-4">
+      <h3 className="font-semibold text-gray-800 mb-1">🎨 {t.frameColorNew}</h3>
+      <p className="text-xs text-gray-500 mb-3">{t.frameColorHint}</p>
+      {loading ? (
+        <p className="text-gray-500 text-sm">{i18n.common.loading}</p>
+      ) : sizes.length === 0 ? (
+        <p className="text-gray-500 text-sm">{t.frameColorNoSizes}</p>
+      ) : (
+        <>
+          <label className="block mb-3">
+            <span className="text-xs text-gray-500">{t.frameColorName}</span>
+            <input
+              value={colorName}
+              disabled={saving}
+              maxLength={40}
+              placeholder={t.frameColorNamePlaceholder}
+              onChange={(e) => setColorName(e.target.value)}
+              className="mt-1 w-full sm:w-64 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none disabled:opacity-50"
+            />
+          </label>
+          <div className="text-xs text-gray-500 mb-2">{t.frameColorSizes}</div>
+          <div className="flex flex-wrap gap-1.5 mb-4">
+            {sizes.map((s) => (
+              <button
+                key={s.size}
+                disabled={saving}
+                onClick={() => toggle(s.size)}
+                title={s.colors.join(', ')}
+                className={`rounded-full px-3 py-1 text-xs border disabled:opacity-50 ${
+                  selected.has(s.size)
+                    ? 'bg-primary text-white border-primary'
+                    : 'bg-white text-gray-600 border-gray-300'
+                }`}
+              >
+                {s.size}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => void submit()}
+            disabled={saving || !colorName.trim() || selected.size === 0}
+            className="bg-primary text-white rounded-lg px-4 py-2 text-sm font-semibold hover:opacity-90 disabled:opacity-50"
+          >
+            {saving ? t.saving : t.frameColorCreate}
+          </button>
+        </>
+      )}
     </div>
   )
 }

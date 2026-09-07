@@ -353,6 +353,22 @@ describe('OrderService', () => {
       expect(confirmations).toHaveLength(1)
       expect(confirmations[0].recipient.phone).toBe('0551111111')
     })
+
+    it('snapshots invoiceBarcode instead of the product barcode when set', async () => {
+      await prisma.product.update({
+        where: { id: prodA.id },
+        data: { invoiceBarcode: 'SIZE-SKU-1' },
+      })
+      const d = await OrderService.getOrCreateDraft(storeId, userId)
+      await OrderService.setItemQty(d.id, prodA.id, 2)
+      await OrderService.setItemQty(d.id, prodB.id, 1)
+      const submitted = await OrderService.submitDraft(d.id, userId)
+
+      const itemA = submitted.items.find((i) => i.productId === prodA.id)
+      const itemB = submitted.items.find((i) => i.productId === prodB.id)
+      expect(itemA?.productBarcode).toBe('SIZE-SKU-1')
+      expect(itemB?.productBarcode).toBe('TST-B')
+    })
   })
 
   describe('special forwards notification (יעדי וואטסאפ לפריטים מיוחדים)', () => {

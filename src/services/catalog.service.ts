@@ -13,6 +13,7 @@ export interface CatalogProduct {
   orderNote: string | null
   groupName: string | null
   unitsPerPack: number
+  invoiceBarcode: string | null
   status: ProductStatus
 }
 
@@ -391,6 +392,7 @@ export class CatalogService {
       orderNote?: string | null
       groupName?: string | null
       unitsPerPack?: number
+      invoiceBarcode?: string | null
     }
   ): Promise<AdminProduct> {
     const product = await prisma.product.findUnique({ where: { id } })
@@ -438,6 +440,9 @@ export class CatalogService {
           ? { groupName: input.groupName?.trim() || null }
           : {}),
         ...(input.unitsPerPack !== undefined ? { unitsPerPack: input.unitsPerPack } : {}),
+        ...(input.invoiceBarcode !== undefined
+          ? { invoiceBarcode: input.invoiceBarcode?.trim() || null }
+          : {}),
       },
       include: { category: { select: { name: true } } },
     })
@@ -704,6 +709,7 @@ export class CatalogService {
     orderNote: string | null
     groupName: string | null
     unitsPerPack: number
+    invoiceBarcode: string | null
     status: ProductStatus
   }): CatalogProduct {    return {
       id: p.id,
@@ -715,7 +721,114 @@ export class CatalogService {
       orderNote: p.orderNote,
       groupName: p.groupName,
       unitsPerPack: p.unitsPerPack,
+      invoiceBarcode: p.invoiceBarcode,
       status: p.status,
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Plain frame colors — one group per size ("מסגרת <WxH>"), a product per
+  // color inside it. All colors of a size bill under the size's invoiceBarcode.
+  // ---------------------------------------------------------------------------
+
+  private static readonly FRAME_GROUP_RE = /^מסגרת \d+x\d+$/
+
+  /**
+   * The plain-frame size groups with their colors and the size billing barcode
+   * (a color product's invoiceBarcode, or the product whose own barcode is the
+   * size SKU). Used by the admin "add frame color" UI.
+   */
+  static async listFrameSizes(): Promise<
+    Array<{ groupName: string; size: string; barcode: string; colors: string[] }>
+  > {
+    const products = await prisma.product.findMany({
+      where: { groupName: { startsWith: 'מסגרת ' } },
+      select: { name: true, barcode: true, invoiceBarcode: true, groupName: true },
+      orderBy: { name: 'asc' },
+    })
+    const groups = new Map<string, typeof products>()
+    for (const p of products) {
+      if (!p.groupName || !this.FRAME_GROUP_RE.test(p.groupName)) continue
+      const list = groups.get(p.groupName) ?? []
+      list.push(p)
+      groups.set(p.groupName, list)
+    }
+    const result = [...groups.entries()].map(([groupName, list]) => {
+      const size = groupName.replace('מסגרת ', '')
+      const barcode =
+        list.find((p) => p.invoiceBarcode)?.invoiceBarcode ??
+        (list.find((p) => !p.invoiceBarcode)?.barcode || list[0].barcode)
+      const colors = list.map((p) =>
+        p.name.replace(groupName, '').trim()
+      ).filter(Boolean)
+      return { groupName, size, barcode, colors }
+    })
+    return result.sort((a, b) => a.size.localeCompare(b.size, 'he', { numeric: true }))
+  }
+
+  /**
+   * Add a color to the given plain-frame sizes: creates one product per size
+   * ("מסגרת <size> <color>", price 0, invented sequential 600xx barcode,
+   * invoiceBarcode = the size's billing barcode). Sizes that already have the
+   * color are skipped. No franchisee notification is sent.
+   * Throws INVALID_COLOR | INVALID_SIZES | FRAME_GROUP_NOT_FOUND.
+   */
+  static async addFrameColor(
+    colorName: string,
+    sizes: string[]
+  ): Promise<{ created: number; skipped: number }> {
+    const color = colorName.trim()
+    if (!color || /\d/.test(color)) throw new Error('INVALID_COLOR')
+    if (sizes.length === 0) throw new Error('INVALID_SIZES')
+
+    const frameSizes = await this.listFrameSizes()
+    const bySize = new Map(frameSizes.map((f) => [f.size, f]))
+
+    let created = 0
+    let skipped = 0
+    for (const size of sizes) {
+      const frame = bySize.get(size)
+      if (!frame) throw new Error('FRAME_GROUP_NOT_FOUND')
+
+      const name = `מסגרת ${size} ${color}`
+      const exists = await prisma.product.findFirst({ where: { name } })
+      if (exists) {
+        skipped++
+        continue
+      }
+      // Category comes from an existing product in the group
+      const sibling = await prisma.product.findFirst({
+        where: { groupName: frame.groupName },
+        select: { categoryId: true },
+      })
+      if (!sibling) throw new Error('FRAME_GROUP_NOT_FOUND')
+
+      const barcode = await this.nextInventedBarcode()
+      await prisma.product.create({
+        data: {
+          name,
+          barcode,
+          categoryId: sibling.categoryId,
+          priceAgorot: 0,
+          status: ProductStatus.ACTIVE,
+          groupName: frame.groupName,
+          invoiceBarcode: frame.barcode,
+        },
+      })
+      created++
+    }
+    return { created, skipped }
+  }
+
+  /** Next free invented SKU in the 600xx internal series (60000-69999). */
+  private static async nextInventedBarcode(): Promise<string> {
+    for (let n = 60056; n < 70000; n++) {
+      const code = String(n)
+      const taken =
+        (await prisma.product.findUnique({ where: { barcode: code }, select: { id: true } })) ||
+        (await prisma.productBarcodeAlias.findUnique({ where: { barcode: code }, select: { id: true } }))
+      if (!taken) return code
+    }
+    throw new Error('NO_FREE_BARCODE')
   }
 }

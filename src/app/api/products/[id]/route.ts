@@ -13,6 +13,7 @@ const updateSchema = z.object({
   orderNote: z.string().max(200).nullable().optional(),
   groupName: z.string().max(120).nullable().optional(),
   unitsPerPack: z.number().int().min(1).max(10000).optional(),
+  invoiceBarcode: z.string().max(64).nullable().optional(),
 })
 
 function authError(error: string | null) {

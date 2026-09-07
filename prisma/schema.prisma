@@ -73,6 +73,9 @@ model Product {
   // How many individual sellable units one ordered/picked unit contains.
   // Picking stays in packs; invoice/ERP quantities are multiplied by this.
   unitsPerPack    Int           @default(1)
+  // When set, submitted order lines snapshot THIS barcode instead of the
+  // product's own (e.g. all frame colors of a size bill under one size SKU).
+  invoiceBarcode  String?
   status          ProductStatus @default(ACTIVE)
   // One-off products created by franchisees (custom canvas sizes): orderable
   // and visible to the warehouse, but never shown in the catalog or search.
