@@ -47,5 +47,7 @@ export function renderMessage(event: NotificationEvent): string {
       const header = event.forwardName ? `🖼️ ${event.forwardName}` : '🖼️ פריטים להכנה'
       return `${header}\nהזמנה #${event.orderNumber} — ${event.storeName}:\n${lines.join('\n')}`
     }
+    case 'DIRECT_MESSAGE':
+      return event.body
   }
 }
