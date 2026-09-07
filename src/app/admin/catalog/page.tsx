@@ -1199,9 +1199,9 @@ function EditProductForm({
 }
 
 /**
- * Add a new color to the plain frame size groups: pick a color name and the
- * sizes it applies to. Creates one product per size with the size's billing
- * barcode (invoiceBarcode) so all colors invoice under one SKU per size.
+ * Add/remove a color across variant groups (plain frame sizes, ink types…):
+ * pick groups, type a color, add — or click ✕ on an existing color to hide it.
+ * Every color product bills under its group's shared billing barcode.
  */
 function FrameColorForm({
   onDone,
@@ -1210,8 +1210,8 @@ function FrameColorForm({
   onDone: (msg: string) => void
   onError: (msg: string) => void
 }) {
-  const [sizes, setSizes] = useState<
-    Array<{ groupName: string; size: string; barcode: string; colors: string[] }>
+  const [groups, setGroups] = useState<
+    Array<{ groupName: string; barcode: string; colors: string[] }>
   >([])
   const [loading, setLoading] = useState(true)
   const [colorName, setColorName] = useState('')
@@ -1224,9 +1224,7 @@ function FrameColorForm({
       .then((res) => res.json())
       .then((data) => {
         if (cancelled) return
-        const list = data.sizes ?? []
-        setSizes(list)
-        setSelected(new Set(list.map((s: { size: string }) => s.size)))
+        setGroups(data.groups ?? [])
       })
       .catch(() => onError(i18n.errors.network))
       .finally(() => {
@@ -1238,34 +1236,44 @@ function FrameColorForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  function toggle(size: string) {
+  function toggle(groupName: string) {
     setSelected((prev) => {
       const next = new Set(prev)
-      if (next.has(size)) next.delete(size)
-      else next.add(size)
+      if (next.has(groupName)) next.delete(groupName)
+      else next.add(groupName)
       return next
     })
   }
 
-  async function submit() {
-    if (!colorName.trim() || selected.size === 0) return
+  // Colors currently present in the selected groups (union) — removable.
+  const selectedColors = [
+    ...new Set(
+      groups.filter((g) => selected.has(g.groupName)).flatMap((g) => g.colors)
+    ),
+  ].sort((a, b) => a.localeCompare(b, 'he'))
+
+  async function mutate(color: string, remove: boolean) {
     setSaving(true)
     try {
       const res = await fetch('/api/frame-colors', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ colorName: colorName.trim(), sizes: [...selected] }),
+        body: JSON.stringify({ colorName: color, groups: [...selected], remove }),
       })
       const data = await res.json()
       if (!res.ok) {
         onError(data?.error?.message ?? i18n.errors.serverError)
         return
       }
-      onDone(
-        t.frameColorCreated
-          .replace('{count}', String(data.created))
-          .replace('{skipped}', String(data.skipped))
-      )
+      if (remove) {
+        onDone(t.frameColorRemoved.replace('{count}', String(data.hidden)))
+      } else {
+        onDone(
+          t.frameColorCreated
+            .replace('{count}', String(data.created + (data.reactivated ?? 0)))
+            .replace('{skipped}', String(data.skipped))
+        )
+      }
     } catch {
       onError(i18n.errors.network)
     } finally {
@@ -1279,46 +1287,76 @@ function FrameColorForm({
       <p className="text-xs text-gray-500 mb-3">{t.frameColorHint}</p>
       {loading ? (
         <p className="text-gray-500 text-sm">{i18n.common.loading}</p>
-      ) : sizes.length === 0 ? (
+      ) : groups.length === 0 ? (
         <p className="text-gray-500 text-sm">{t.frameColorNoSizes}</p>
       ) : (
         <>
-          <label className="block mb-3">
-            <span className="text-xs text-gray-500">{t.frameColorName}</span>
-            <input
-              value={colorName}
-              disabled={saving}
-              maxLength={40}
-              placeholder={t.frameColorNamePlaceholder}
-              onChange={(e) => setColorName(e.target.value)}
-              className="mt-1 w-full sm:w-64 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none disabled:opacity-50"
-            />
-          </label>
           <div className="text-xs text-gray-500 mb-2">{t.frameColorSizes}</div>
           <div className="flex flex-wrap gap-1.5 mb-4">
-            {sizes.map((s) => (
+            {groups.map((g) => (
               <button
-                key={s.size}
+                key={g.groupName}
                 disabled={saving}
-                onClick={() => toggle(s.size)}
-                title={s.colors.join(', ')}
+                onClick={() => toggle(g.groupName)}
+                title={g.colors.join(', ')}
                 className={`rounded-full px-3 py-1 text-xs border disabled:opacity-50 ${
-                  selected.has(s.size)
+                  selected.has(g.groupName)
                     ? 'bg-primary text-white border-primary'
                     : 'bg-white text-gray-600 border-gray-300'
                 }`}
               >
-                {s.size}
+                {g.groupName}
               </button>
             ))}
           </div>
-          <button
-            onClick={() => void submit()}
-            disabled={saving || !colorName.trim() || selected.size === 0}
-            className="bg-primary text-white rounded-lg px-4 py-2 text-sm font-semibold hover:opacity-90 disabled:opacity-50"
-          >
-            {saving ? t.saving : t.frameColorCreate}
-          </button>
+
+          {selected.size > 0 && selectedColors.length > 0 && (
+            <>
+              <div className="text-xs text-gray-500 mb-2">{t.frameColorExisting}</div>
+              <div className="flex flex-wrap gap-1.5 mb-4">
+                {selectedColors.map((c) => (
+                  <span
+                    key={c}
+                    className="inline-flex items-center gap-1 bg-blue-50 border border-blue-200 text-blue-800 rounded-full px-3 py-1 text-xs"
+                  >
+                    {c}
+                    <button
+                      disabled={saving}
+                      onClick={() => {
+                        if (window.confirm(t.frameColorConfirmRemove.replace('{color}', c)))
+                          void mutate(c, true)
+                      }}
+                      className="text-blue-500 font-bold disabled:opacity-50"
+                      aria-label={t.frameColorRemove}
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </>
+          )}
+
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="block">
+              <span className="text-xs text-gray-500">{t.frameColorName}</span>
+              <input
+                value={colorName}
+                disabled={saving}
+                maxLength={40}
+                placeholder={t.frameColorNamePlaceholder}
+                onChange={(e) => setColorName(e.target.value)}
+                className="mt-1 w-full sm:w-64 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none disabled:opacity-50"
+              />
+            </label>
+            <button
+              onClick={() => void mutate(colorName.trim(), false)}
+              disabled={saving || !colorName.trim() || selected.size === 0}
+              className="bg-primary text-white rounded-lg px-4 py-2 text-sm font-semibold hover:opacity-90 disabled:opacity-50"
+            >
+              {saving ? t.saving : t.frameColorCreate}
+            </button>
+          </div>
         </>
       )}
     </div>

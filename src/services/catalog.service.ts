@@ -727,81 +727,87 @@ export class CatalogService {
   }
 
   // ---------------------------------------------------------------------------
-  // Plain frame colors — one group per size ("מסגרת <WxH>"), a product per
-  // color inside it. All colors of a size bill under the size's invoiceBarcode.
+  // Variant color groups — groups whose products share a billing barcode
+  // (invoiceBarcode): plain frames by size, ink types, etc. The franchisee
+  // picks a color inside the group; the invoice bills one SKU per group.
   // ---------------------------------------------------------------------------
 
-  private static readonly FRAME_GROUP_RE = /^מסגרת \d+x\d+$/
-
   /**
-   * The plain-frame size groups with their colors and the size billing barcode
-   * (a color product's invoiceBarcode, or the product whose own barcode is the
-   * size SKU). Used by the admin "add frame color" UI.
+   * Groups that have at least one product with an invoiceBarcode override.
+   * Returns the group's billing barcode and its current color labels
+   * (product name minus the group-name prefix). Used by the admin color tool.
    */
-  static async listFrameSizes(): Promise<
-    Array<{ groupName: string; size: string; barcode: string; colors: string[] }>
+  static async listVariantGroups(): Promise<
+    Array<{ groupName: string; barcode: string; colors: string[] }>
   > {
     const products = await prisma.product.findMany({
-      where: { groupName: { startsWith: 'מסגרת ' } },
-      select: { name: true, barcode: true, invoiceBarcode: true, groupName: true },
+      where: { groupName: { not: null } },
+      select: { name: true, barcode: true, invoiceBarcode: true, groupName: true, status: true },
       orderBy: { name: 'asc' },
     })
     const groups = new Map<string, typeof products>()
     for (const p of products) {
-      if (!p.groupName || !this.FRAME_GROUP_RE.test(p.groupName)) continue
-      const list = groups.get(p.groupName) ?? []
+      const list = groups.get(p.groupName!) ?? []
       list.push(p)
-      groups.set(p.groupName, list)
+      groups.set(p.groupName!, list)
     }
-    const result = [...groups.entries()].map(([groupName, list]) => {
-      const size = groupName.replace('מסגרת ', '')
-      const barcode =
-        list.find((p) => p.invoiceBarcode)?.invoiceBarcode ??
-        (list.find((p) => !p.invoiceBarcode)?.barcode || list[0].barcode)
-      const colors = list.map((p) =>
-        p.name.replace(groupName, '').trim()
-      ).filter(Boolean)
-      return { groupName, size, barcode, colors }
-    })
-    return result.sort((a, b) => a.size.localeCompare(b.size, 'he', { numeric: true }))
+    const result: Array<{ groupName: string; barcode: string; colors: string[] }> = []
+    for (const [groupName, list] of groups) {
+      const billing = list.find((p) => p.invoiceBarcode)?.invoiceBarcode
+      if (!billing) continue
+      const colors = list
+        .filter((p) => p.status !== ProductStatus.HIDDEN)
+        .map((p) => p.name.replace(groupName, '').trim())
+        .filter(Boolean)
+      result.push({ groupName, barcode: billing, colors })
+    }
+    return result.sort((a, b) => a.groupName.localeCompare(b.groupName, 'he', { numeric: true }))
   }
 
   /**
-   * Add a color to the given plain-frame sizes: creates one product per size
-   * ("מסגרת <size> <color>", price 0, invented sequential 600xx barcode,
-   * invoiceBarcode = the size's billing barcode). Sizes that already have the
-   * color are skipped. No franchisee notification is sent.
-   * Throws INVALID_COLOR | INVALID_SIZES | FRAME_GROUP_NOT_FOUND.
+   * Add a color to the given variant groups: creates "<group> <color>" per
+   * group (price 0, invented 600xx barcode, invoiceBarcode = the group's
+   * billing barcode). An existing HIDDEN color is reactivated; an ACTIVE one
+   * is skipped. No franchisee notification is sent.
+   * Throws INVALID_COLOR | INVALID_GROUPS | VARIANT_GROUP_NOT_FOUND.
    */
-  static async addFrameColor(
+  static async addVariantColor(
     colorName: string,
-    sizes: string[]
-  ): Promise<{ created: number; skipped: number }> {
+    groupNames: string[]
+  ): Promise<{ created: number; reactivated: number; skipped: number }> {
     const color = colorName.trim()
     if (!color || /\d/.test(color)) throw new Error('INVALID_COLOR')
-    if (sizes.length === 0) throw new Error('INVALID_SIZES')
+    if (groupNames.length === 0) throw new Error('INVALID_GROUPS')
 
-    const frameSizes = await this.listFrameSizes()
-    const bySize = new Map(frameSizes.map((f) => [f.size, f]))
+    const groups = await this.listVariantGroups()
+    const byName = new Map(groups.map((g) => [g.groupName, g]))
 
     let created = 0
+    let reactivated = 0
     let skipped = 0
-    for (const size of sizes) {
-      const frame = bySize.get(size)
-      if (!frame) throw new Error('FRAME_GROUP_NOT_FOUND')
+    for (const groupName of groupNames) {
+      const group = byName.get(groupName)
+      if (!group) throw new Error('VARIANT_GROUP_NOT_FOUND')
 
-      const name = `מסגרת ${size} ${color}`
-      const exists = await prisma.product.findFirst({ where: { name } })
-      if (exists) {
-        skipped++
+      const name = `${groupName} ${color}`
+      const existing = await prisma.product.findFirst({ where: { name } })
+      if (existing) {
+        if (existing.status === ProductStatus.HIDDEN) {
+          await prisma.product.update({
+            where: { id: existing.id },
+            data: { status: ProductStatus.ACTIVE, groupName, invoiceBarcode: group.barcode },
+          })
+          reactivated++
+        } else {
+          skipped++
+        }
         continue
       }
-      // Category comes from an existing product in the group
       const sibling = await prisma.product.findFirst({
-        where: { groupName: frame.groupName },
+        where: { groupName },
         select: { categoryId: true },
       })
-      if (!sibling) throw new Error('FRAME_GROUP_NOT_FOUND')
+      if (!sibling) throw new Error('VARIANT_GROUP_NOT_FOUND')
 
       const barcode = await this.nextInventedBarcode()
       await prisma.product.create({
@@ -811,13 +817,37 @@ export class CatalogService {
           categoryId: sibling.categoryId,
           priceAgorot: 0,
           status: ProductStatus.ACTIVE,
-          groupName: frame.groupName,
-          invoiceBarcode: frame.barcode,
+          groupName,
+          invoiceBarcode: group.barcode,
         },
       })
       created++
     }
-    return { created, skipped }
+    return { created, reactivated, skipped }
+  }
+
+  /**
+   * Remove a color from the given variant groups — soft: the matching
+   * "<group> <color>" products are HIDDEN (order history stays intact and the
+   * color can be re-added later). Returns how many were hidden.
+   */
+  static async removeVariantColor(
+    colorName: string,
+    groupNames: string[]
+  ): Promise<{ hidden: number }> {
+    const color = colorName.trim()
+    if (!color) throw new Error('INVALID_COLOR')
+    if (groupNames.length === 0) throw new Error('INVALID_GROUPS')
+
+    let hidden = 0
+    for (const groupName of groupNames) {
+      const result = await prisma.product.updateMany({
+        where: { name: `${groupName} ${color}`, status: { not: ProductStatus.HIDDEN } },
+        data: { status: ProductStatus.HIDDEN },
+      })
+      hidden += result.count
+    }
+    return { hidden }
   }
 
   /** Next free invented SKU in the 600xx internal series (60000-69999). */

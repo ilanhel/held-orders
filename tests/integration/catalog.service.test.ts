@@ -224,62 +224,84 @@ describe('CatalogService', () => {
     })
   })
 
-  describe('frame colors (listFrameSizes + addFrameColor)', () => {
+  describe('variant color groups (listVariantGroups + add/removeVariantColor)', () => {
     async function seedFrames() {
       const cat = await prisma.category.create({ data: { name: 'מסגרות', sortOrder: 40 } })
-      // Two size groups, wood is the billing SKU (own barcode, no invoiceBarcode)
       await prisma.product.createMany({
         data: [
           { name: 'מסגרת 10x15 עץ', barcode: '7291027110152', categoryId: cat.id, priceAgorot: 0, groupName: 'מסגרת 10x15' },
           { name: 'מסגרת 10x15 לבנה', barcode: '7460', categoryId: cat.id, priceAgorot: 0, groupName: 'מסגרת 10x15', invoiceBarcode: '7291027110152' },
           { name: 'מסגרת 10x15 שחורה', barcode: '60041', categoryId: cat.id, priceAgorot: 0, groupName: 'מסגרת 10x15', invoiceBarcode: '7291027110152' },
-          { name: 'מסגרת 30x40 עץ', barcode: '7291027130402', categoryId: cat.id, priceAgorot: 0, groupName: 'מסגרת 30x40' },
+          { name: 'דיו RICOH שחור', barcode: '60060', categoryId: cat.id, priceAgorot: 0, groupName: 'דיו RICOH', invoiceBarcode: '857122883314' },
+          // group without any invoiceBarcode — NOT a variant group
+          { name: 'חולצה מידה S', barcode: 'SHIRT-S', categoryId: cat.id, priceAgorot: 0, groupName: 'חולצה' },
         ],
       })
       return cat
     }
 
-    it('lists size groups with billing barcode and colors', async () => {
+    it('lists only groups with a shared billing barcode', async () => {
       await seedFrames()
-      const sizes = await CatalogService.listFrameSizes()
-      expect(sizes.map((s) => s.size)).toEqual(['10x15', '30x40'])
-      const s1015 = sizes[0]
-      expect(s1015.barcode).toBe('7291027110152')
-      expect(s1015.colors.sort()).toEqual(['לבנה', 'עץ', 'שחורה'].sort())
-      expect(sizes[1].barcode).toBe('7291027130402')
+      const groups = await CatalogService.listVariantGroups()
+      expect(groups.map((g) => g.groupName).sort()).toEqual(['דיו RICOH', 'מסגרת 10x15'].sort())
+      const frame = groups.find((g) => g.groupName === 'מסגרת 10x15')!
+      expect(frame.barcode).toBe('7291027110152')
+      expect(frame.colors.sort()).toEqual(['לבנה', 'עץ', 'שחורה'].sort())
+      const ink = groups.find((g) => g.groupName === 'דיו RICOH')!
+      expect(ink.barcode).toBe('857122883314')
+      expect(ink.colors).toEqual(['שחור'])
     })
 
-    it('addFrameColor creates a product per size with the size billing barcode', async () => {
+    it('addVariantColor creates a product per group with the billing barcode', async () => {
       const cat = await seedFrames()
-      const result = await CatalogService.addFrameColor('זהב', ['10x15', '30x40'])
-      expect(result).toEqual({ created: 2, skipped: 0 })
+      const result = await CatalogService.addVariantColor('זהב', ['מסגרת 10x15', 'דיו RICOH'])
+      expect(result).toEqual({ created: 2, reactivated: 0, skipped: 0 })
 
-      const gold1015 = await prisma.product.findFirst({ where: { name: 'מסגרת 10x15 זהב' } })
-      expect(gold1015).not.toBeNull()
-      expect(gold1015?.groupName).toBe('מסגרת 10x15')
-      expect(gold1015?.invoiceBarcode).toBe('7291027110152')
-      expect(gold1015?.categoryId).toBe(cat.id)
-      expect(gold1015?.priceAgorot).toBe(0)
-      expect(gold1015?.status).toBe(ProductStatus.ACTIVE)
-      expect(/^6\d{4}$/.test(gold1015!.barcode)).toBe(true)
+      const goldFrame = await prisma.product.findFirst({ where: { name: 'מסגרת 10x15 זהב' } })
+      expect(goldFrame?.groupName).toBe('מסגרת 10x15')
+      expect(goldFrame?.invoiceBarcode).toBe('7291027110152')
+      expect(goldFrame?.categoryId).toBe(cat.id)
+      expect(goldFrame?.status).toBe(ProductStatus.ACTIVE)
+      expect(/^6\d{4}$/.test(goldFrame!.barcode)).toBe(true)
 
-      const gold3040 = await prisma.product.findFirst({ where: { name: 'מסגרת 30x40 זהב' } })
-      expect(gold3040?.invoiceBarcode).toBe('7291027130402')
-      expect(gold3040?.barcode).not.toBe(gold1015?.barcode)
+      const goldInk = await prisma.product.findFirst({ where: { name: 'דיו RICOH זהב' } })
+      expect(goldInk?.invoiceBarcode).toBe('857122883314')
+      expect(goldInk?.barcode).not.toBe(goldFrame?.barcode)
     })
 
-    it('skips sizes that already have the color', async () => {
+    it('skips existing active colors and reactivates hidden ones', async () => {
       await seedFrames()
-      await CatalogService.addFrameColor('זהב', ['10x15'])
-      const result = await CatalogService.addFrameColor('זהב', ['10x15', '30x40'])
-      expect(result).toEqual({ created: 1, skipped: 1 })
+      await CatalogService.addVariantColor('זהב', ['מסגרת 10x15'])
+      const again = await CatalogService.addVariantColor('זהב', ['מסגרת 10x15', 'דיו RICOH'])
+      expect(again).toEqual({ created: 1, reactivated: 0, skipped: 1 })
+
+      await CatalogService.removeVariantColor('זהב', ['מסגרת 10x15'])
+      const hidden = await prisma.product.findFirst({ where: { name: 'מסגרת 10x15 זהב' } })
+      expect(hidden?.status).toBe(ProductStatus.HIDDEN)
+      // Hidden colors are not listed
+      const groups = await CatalogService.listVariantGroups()
+      expect(groups.find((g) => g.groupName === 'מסגרת 10x15')?.colors).not.toContain('זהב')
+
+      const back = await CatalogService.addVariantColor('זהב', ['מסגרת 10x15'])
+      expect(back).toEqual({ created: 0, reactivated: 1, skipped: 0 })
+      const active = await prisma.product.findFirst({ where: { name: 'מסגרת 10x15 זהב' } })
+      expect(active?.status).toBe(ProductStatus.ACTIVE)
     })
 
-    it('rejects invalid color or unknown size', async () => {
+    it('removeVariantColor hides matching products and reports count', async () => {
       await seedFrames()
-      await expect(CatalogService.addFrameColor('  ', ['10x15'])).rejects.toThrow('INVALID_COLOR')
-      await expect(CatalogService.addFrameColor('זהב', [])).rejects.toThrow('INVALID_SIZES')
-      await expect(CatalogService.addFrameColor('זהב', ['99x99'])).rejects.toThrow('FRAME_GROUP_NOT_FOUND')
+      const result = await CatalogService.removeVariantColor('שחור', ['דיו RICOH'])
+      expect(result).toEqual({ hidden: 1 })
+      const p = await prisma.product.findFirst({ where: { name: 'דיו RICOH שחור' } })
+      expect(p?.status).toBe(ProductStatus.HIDDEN)
+    })
+
+    it('rejects invalid color or unknown group', async () => {
+      await seedFrames()
+      await expect(CatalogService.addVariantColor('  ', ['מסגרת 10x15'])).rejects.toThrow('INVALID_COLOR')
+      await expect(CatalogService.addVariantColor('זהב', [])).rejects.toThrow('INVALID_GROUPS')
+      await expect(CatalogService.addVariantColor('זהב', ['לא קיים'])).rejects.toThrow('VARIANT_GROUP_NOT_FOUND')
+      await expect(CatalogService.addVariantColor('זהב', ['חולצה'])).rejects.toThrow('VARIANT_GROUP_NOT_FOUND')
     })
   })
 

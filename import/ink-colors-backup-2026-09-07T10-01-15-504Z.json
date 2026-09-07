@@ -1,0 +1,32 @@
+[
+  {
+    "id": "cmqtbdp3v00ouwvmw9oamyl64",
+    "barcode": "857122883350",
+    "prevStatus": "ACTIVE",
+    "prevGroupName": "דיו SAWGRASS"
+  },
+  {
+    "id": "cmqtbdpwb00owwvmw4l32134w",
+    "barcode": "857122883351",
+    "prevStatus": "ACTIVE",
+    "prevGroupName": "דיו SAWGRASS"
+  },
+  {
+    "id": "cmqtbd46v00n0wvmwdflzpfd5",
+    "barcode": "857122883314",
+    "prevStatus": "ACTIVE",
+    "prevGroupName": null
+  },
+  {
+    "id": "cmqp9qb1f003gl50464wq7q5y",
+    "barcode": "4141",
+    "prevStatus": "ACTIVE",
+    "prevGroupName": null
+  },
+  {
+    "id": "cmqtb6jiw002owvmwwyxg8wxy",
+    "barcode": "10343917477",
+    "prevStatus": "ACTIVE",
+    "prevGroupName": null
+  }
+]
