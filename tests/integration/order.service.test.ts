@@ -523,6 +523,30 @@ describe('OrderService', () => {
         notifications.sent.filter((n) => n.event.type === 'ORDER_SPECIAL_FRAMES')
       ).toHaveLength(0)
     })
+
+    it('resendSpecialForwards re-sends for recent submitted orders', async () => {
+      const d = await OrderService.getOrCreateDraft(storeId, userId)
+      await OrderService.setItemQty(d.id, prodCanvas.id, 2)
+      await OrderService.submitDraft(d.id, userId)
+      // Destination configured only AFTER submit — nothing sent yet
+      expect(
+        notifications.sent.filter((n) => n.event.type === 'ORDER_SPECIAL_FRAMES')
+      ).toHaveLength(0)
+      await createForward({
+        name: 'מחסן מסגרות',
+        phone: '0509999999',
+        categoryIds: [canvasCatId],
+      })
+
+      const result = await OrderService.resendSpecialForwards(48)
+      expect(result.checked).toBe(1)
+      expect(result.sent).toBe(1)
+      const special = notifications.sent.filter(
+        (n) => n.event.type === 'ORDER_SPECIAL_FRAMES'
+      )
+      expect(special).toHaveLength(1)
+      expect(special[0].recipient.phone).toBe('0509999999')
+    })
   })
 
   describe('getWarehouseQueue', () => {

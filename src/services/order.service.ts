@@ -295,11 +295,13 @@ export class OrderService {
    * Send matching order lines to each active forwarding destination
    * (admin-managed products/categories per destination). One WhatsApp message
    * per destination; no-op when nothing matches or none are configured.
+   * Returns the number of messages sent.
    */
-  private static async notifySpecialForwards(view: OrderView): Promise<void> {
+  private static async notifySpecialForwards(view: OrderView): Promise<number> {
     const matchers = await ForwardService.listMatchers()
-    if (matchers.length === 0) return
+    if (matchers.length === 0) return 0
 
+    let sent = 0
     for (const m of matchers) {
       const lines = view.items
         .filter((i) => m.productIds.has(i.productId) || m.categoryNames.has(i.categoryName))
@@ -316,7 +318,34 @@ export class OrderService {
         },
         { phone: m.phone, name: m.name }
       )
+      sent++
     }
+    return sent
+  }
+
+  /**
+   * Manually re-send the special-forward messages for all submitted orders of
+   * the last `sinceHours` hours (admin backfill after config changes). Sends
+   * exactly what the automatic submit hook would send today.
+   */
+  static async resendSpecialForwards(
+    sinceHours: number
+  ): Promise<{ checked: number; sent: number }> {
+    const since = new Date(Date.now() - sinceHours * 3600_000)
+    const orders = await prisma.order.findMany({
+      where: {
+        number: { not: null },
+        submittedAt: { gte: since },
+        status: { notIn: [OrderStatus.CANCELLED, OrderStatus.DRAFT] },
+      },
+      include: { store: true, items: ITEMS_FOR_VIEW },
+      orderBy: { number: 'asc' },
+    })
+    let sent = 0
+    for (const o of orders) {
+      sent += await this.notifySpecialForwards(this.toView(o))
+    }
+    return { checked: orders.length, sent }
   }
 
   /**
