@@ -88,9 +88,38 @@ export default function AdminCatalogPage() {
     setPage(1)
   }, [search, categoryFilter, statusFilter])
 
-  const pageCount = Math.max(1, Math.ceil(products.length / PAGE_SIZE))
+  // Variant color groups (frames/inks/cushions… — members share a billing
+  // barcode via invoiceBarcode) collapse into ONE row; colors are managed via
+  // the 🎨 tool, so individual color products aren't shown or hideable here.
+  type Row =
+    | { kind: 'product'; product: Product }
+    | { kind: 'group'; groupName: string; members: Product[] }
+
+  const rows: Row[] = (() => {
+    const variantGroups = new Set(
+      products.filter((p) => p.groupName && p.invoiceBarcode).map((p) => p.groupName!)
+    )
+    const seen = new Set<string>()
+    const out: Row[] = []
+    for (const p of products) {
+      if (p.groupName && variantGroups.has(p.groupName)) {
+        if (seen.has(p.groupName)) continue
+        seen.add(p.groupName)
+        out.push({
+          kind: 'group',
+          groupName: p.groupName,
+          members: products.filter((x) => x.groupName === p.groupName),
+        })
+      } else {
+        out.push({ kind: 'product', product: p })
+      }
+    }
+    return out
+  })()
+
+  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE))
   const safePage = Math.min(page, pageCount)
-  const visibleProducts = products.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+  const visibleRows = rows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
 
   function flash(msg: string) {
     setMessage(msg)
@@ -435,8 +464,60 @@ export default function AdminCatalogPage() {
         ) : (
           <>
           <ul className="space-y-2">
-            {visibleProducts.map((p) =>
-              editingId === p.id ? (
+            {visibleRows.map((row) => {
+              if (row.kind === 'group') {
+                const g = row
+                const active = g.members.filter((m) => m.status !== 'HIDDEN')
+                const hidden = g.members.filter((m) => m.status === 'HIDDEN')
+                const billing = g.members.find((m) => m.invoiceBarcode)?.invoiceBarcode
+                const imageOwner = g.members.find((m) => m.imagePath) ?? g.members[0]
+                const colorOf = (m: Product) => m.name.replace(g.groupName, '').trim() || m.name
+                return (
+                  <li
+                    key={`grp-${g.groupName}`}
+                    className="bg-white rounded-xl border border-purple-200 p-3 flex flex-col sm:flex-row sm:items-center gap-3"
+                  >
+                    <ImageEditor
+                      product={imageOwner}
+                      disabled={busyId === imageOwner.id}
+                      onUpload={(file) => uploadImage(imageOwner, file)}
+                      onRemove={() => removeImage(imageOwner)}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-gray-900">{g.groupName}</span>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">
+                          🎨 {t.variantGroup}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        {g.members[0].categoryName} · {t.invoiceBarcodeShort}: {billing ?? '—'}
+                      </div>
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {active.map((m) => (
+                          <span
+                            key={m.id}
+                            className="text-xs px-2 py-0.5 rounded-full bg-green-50 border border-green-200 text-green-800"
+                          >
+                            {colorOf(m)}
+                          </span>
+                        ))}
+                        {hidden.map((m) => (
+                          <span
+                            key={m.id}
+                            className="text-xs px-2 py-0.5 rounded-full bg-gray-100 border border-gray-200 text-gray-400 line-through"
+                          >
+                            {colorOf(m)}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1">{t.variantGroupNote}</div>
+                    </div>
+                  </li>
+                )
+              }
+              const p = row.product
+              return editingId === p.id ? (
                 <li key={p.id}>
                   <EditProductForm
                     product={p}
@@ -546,7 +627,7 @@ export default function AdminCatalogPage() {
                   </div>
                 </li>
               )
-            )}
+            })}
           </ul>
           {pageCount > 1 && (
             <div className="flex items-center justify-center gap-3 mt-4">
