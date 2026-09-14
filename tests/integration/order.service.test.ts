@@ -549,6 +549,36 @@ describe('OrderService', () => {
     })
   })
 
+  describe('setDraftNote', () => {
+    it('sets, trims and clears the note on a draft', async () => {
+      const d = await OrderService.getOrCreateDraft(storeId, userId)
+      const withNote = await OrderService.setDraftNote(d.id, '  נא לארוז בנפרד  ')
+      expect(withNote.note).toBe('נא לארוז בנפרד')
+      const cleared = await OrderService.setDraftNote(d.id, '   ')
+      expect(cleared.note).toBeNull()
+    })
+
+    it('keeps the note through submit and includes it in the warehouse message', async () => {
+      const d = await OrderService.getOrCreateDraft(storeId, userId)
+      await OrderService.setItemQty(d.id, prodA.id, 1)
+      await OrderService.setDraftNote(d.id, 'דחוף בבקשה')
+      const submitted = await OrderService.submitDraft(d.id, userId)
+      expect(submitted.note).toBe('דחוף בבקשה')
+
+      const wh = notifications.sent.find((n) => n.event.type === 'ORDER_SUBMITTED')
+      if (wh?.event.type !== 'ORDER_SUBMITTED') throw new Error('missing event')
+      expect(wh.event.note).toBe('דחוף בבקשה')
+    })
+
+    it('rejects non-draft orders and too-long notes', async () => {
+      const d = await OrderService.getOrCreateDraft(storeId, userId)
+      await expect(OrderService.setDraftNote(d.id, 'x'.repeat(501))).rejects.toThrow('NOTE_TOO_LONG')
+      await OrderService.setItemQty(d.id, prodA.id, 1)
+      const submitted = await OrderService.submitDraft(d.id, userId)
+      await expect(OrderService.setDraftNote(submitted.id, 'הערה')).rejects.toThrow('ORDER_NOT_DRAFT')
+    })
+  })
+
   describe('getWarehouseQueue', () => {
     it('returns active orders newest-first, excludes DRAFT/SHIPPED/CANCELLED', async () => {
       // Submitted order

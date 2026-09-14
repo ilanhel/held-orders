@@ -20,6 +20,7 @@ type Order = {
   id: string
   number: number | null
   status: string
+  note: string | null
   items: OrderItem[]
   totalAgorot: number
 }
@@ -52,10 +53,15 @@ export default function CartPage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [note, setNote] = useState('')
   // Optimistic-update bookkeeping (same pattern as the catalog page).
   const pendingQty = useRef<Map<string, number>>(new Map())
   const syncTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
   const syncChains = useRef<Map<string, Promise<void>>>(new Map())
+  // Note autosave: debounce timer + last value synced to the server.
+  const noteTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const noteSynced = useRef<string>('')
+  const noteChain = useRef<Promise<void>>(Promise.resolve())
 
   useEffect(() => {
     let cancelled = false
@@ -67,7 +73,11 @@ export default function CartPage() {
           return
         }
         const data = await res.json()
-        if (!cancelled) setOrder(data.order)
+        if (!cancelled) {
+          setOrder(data.order)
+          setNote(data.order?.note ?? '')
+          noteSynced.current = data.order?.note ?? ''
+        }
       } catch {
         if (!cancelled) setError(i18n.errors.network)
       } finally {
@@ -162,6 +172,35 @@ export default function CartPage() {
     syncTimers.current.clear()
     for (const pid of pendingQty.current.keys()) void queueSync(pid)
     await Promise.all([...syncChains.current.values()])
+    await flushNote()
+  }
+
+  function changeNote(value: string) {
+    setNote(value)
+    if (noteTimer.current) clearTimeout(noteTimer.current)
+    noteTimer.current = setTimeout(() => void syncNote(value), 800)
+  }
+
+  function syncNote(value: string): Promise<void> {
+    noteChain.current = noteChain.current.then(async () => {
+      if (noteSynced.current === value.trim()) return
+      try {
+        const res = await fetch('/api/orders/draft/note', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ note: value.trim() || null }),
+        })
+        if (res.ok) noteSynced.current = value.trim()
+      } catch {
+        // keep silent — flushNote before submit retries
+      }
+    })
+    return noteChain.current
+  }
+
+  async function flushNote() {
+    if (noteTimer.current) clearTimeout(noteTimer.current)
+    await syncNote(note)
   }
 
   async function submit() {
@@ -276,6 +315,20 @@ export default function CartPage() {
           </div>
 
           <div className="sticky bottom-0 z-40 bg-white border-t border-gray-200 px-4 py-4 shadow-lg pb-safe">
+            <label className="block mb-3">
+              <span className="text-sm font-semibold text-gray-700">
+                📝 {i18n.orders.noteLabel}
+              </span>
+              <textarea
+                value={note}
+                onChange={(e) => changeNote(e.target.value)}
+                onBlur={() => void flushNote()}
+                maxLength={500}
+                rows={2}
+                placeholder={i18n.orders.notePlaceholder}
+                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none resize-none"
+              />
+            </label>
             <button
               onClick={submit}
               disabled={submitting}

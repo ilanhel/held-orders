@@ -3,7 +3,7 @@
  * Drivers map these to specific channel templates (WhatsApp, console, etc.).
  */
 export type NotificationEvent =
-  | { type: 'ORDER_SUBMITTED'; orderNumber: number; storeName: string; totalAgorot: number; itemCount: number }
+  | { type: 'ORDER_SUBMITTED'; orderNumber: number; storeName: string; totalAgorot: number; itemCount: number; note?: string }
   | { type: 'ORDER_CONFIRMATION'; orderNumber: number; itemCount: number }
   | { type: 'ORDER_RECEIVED'; orderNumber: number }
   | { type: 'ORDER_PICKING'; orderNumber: number }

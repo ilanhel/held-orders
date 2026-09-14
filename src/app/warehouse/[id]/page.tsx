@@ -23,6 +23,7 @@ type Order = {
   storeName: string
   status: OrderStatusKey
   warehouseMark: 'YELLOW' | 'GREEN' | null
+  note: string | null
   submittedAt: string | null
   items: OrderItem[]
   totalAgorot: number
@@ -328,6 +329,11 @@ export default function WarehouseOrderPage({
           {order.submittedAt && (
             <div className="text-base font-bold text-gray-800 mt-1">
               📅 {new Date(order.submittedAt).toLocaleString('he-IL')}
+            </div>
+          )}
+          {order.note && (
+            <div className="mt-2 p-2 bg-yellow-50 border border-yellow-300 rounded-lg text-sm text-yellow-900 font-semibold">
+              📝 {i18n.warehouse.pick.noteLabel}: {order.note}
             </div>
           )}
           <div className="flex gap-2 mt-3">

@@ -152,6 +152,8 @@ model Order {
   // Warehouse-only visual marker: YELLOW = waiting for products in production,
   // GREEN = picked and invoiced. Independent of the status flow.
   warehouseMark WarehouseMark?
+  // Free-text note from the franchisee to the warehouse (set on the draft).
+  note      String?
   submittedAt DateTime?
   items     OrderItem[]
   history   OrderStatusHistory[]

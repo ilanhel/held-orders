@@ -59,6 +59,7 @@ export interface OrderView {
   storeName: string
   status: OrderStatus
   warehouseMark: WarehouseMark | null
+  note: string | null
   submittedAt: Date | null
   createdAt: Date
   updatedAt: Date
@@ -149,6 +150,26 @@ export class OrderService {
       },
     })
     return this.toView(updated!)
+  }
+
+  /**
+   * Set (or clear) the franchisee's free-text note to the warehouse on a
+   * DRAFT order. Trimmed; empty clears. Throws ORDER_NOT_FOUND |
+   * ORDER_NOT_DRAFT | NOTE_TOO_LONG (500 chars).
+   */
+  static async setDraftNote(orderId: string, note: string | null): Promise<OrderView> {
+    const order = await prisma.order.findUnique({ where: { id: orderId } })
+    if (!order) throw new Error('ORDER_NOT_FOUND')
+    if (order.status !== OrderStatus.DRAFT) throw new Error('ORDER_NOT_DRAFT')
+    const value = note?.trim() || null
+    if (value && value.length > 500) throw new Error('NOTE_TOO_LONG')
+
+    const updated = await prisma.order.update({
+      where: { id: orderId },
+      data: { note: value },
+      include: { store: true, items: ITEMS_FOR_VIEW },
+    })
+    return this.toView(updated)
   }
 
   /**
@@ -263,6 +284,7 @@ export class OrderService {
           storeName: view.storeName,
           totalAgorot: view.totalAgorot,
           itemCount: view.items.length,
+          note: view.note ?? undefined,
         },
         warehouseRecipients.map((u) => ({ phone: u.phone, name: u.name }))
       )
@@ -821,6 +843,7 @@ export class OrderService {
     store: { name: string }
     status: OrderStatus
     warehouseMark: WarehouseMark | null
+    note: string | null
     submittedAt: Date | null
     createdAt: Date
     updatedAt: Date
@@ -843,6 +866,7 @@ export class OrderService {
       storeName: order.store.name,
       status: order.status,
       warehouseMark: order.warehouseMark,
+      note: order.note,
       submittedAt: order.submittedAt,
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,

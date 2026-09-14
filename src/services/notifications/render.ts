@@ -9,7 +9,10 @@ import type { NotificationEvent } from './types'
 export function renderMessage(event: NotificationEvent): string {
   switch (event.type) {
     case 'ORDER_SUBMITTED':
-      return `הזמנה #${event.orderNumber} מ-${event.storeName} התקבלה: ${event.itemCount} פריטים, ${formatTotal(event.totalAgorot)}.`
+      return (
+        `הזמנה #${event.orderNumber} מ-${event.storeName} התקבלה: ${event.itemCount} פריטים, ${formatTotal(event.totalAgorot)}.` +
+        (event.note ? `\n📝 הערת הזכיין: ${event.note}` : '')
+      )
     case 'ORDER_CONFIRMATION':
       return `📦 ${i18n.orders.submittedSuccess}\nהזמנה #${event.orderNumber}: ${event.itemCount} פריטים.\nהמחסן קיבל את ההזמנה ומתחיל לטפל בה.`
     case 'ORDER_RECEIVED':

@@ -90,6 +90,8 @@ export const i18n = {
     myOrders: 'ההזמנות שלי',
     cart: 'הסל שלי',
     cartEmpty: 'הסל ריק',
+    noteLabel: 'הערה למחסן (אופציונלי)',
+    notePlaceholder: 'למשל: נא לארוז את המסגרות בנפרד',
     cartSummaryButton: 'מה בסל?',
     cartSummaryClose: 'סגירה',
     cartSummaryTitle: 'הסל שלי — לפי קטגוריות',
@@ -208,6 +210,7 @@ export const i18n = {
       pickedSection: 'לוקטו',
       remainingLabel: 'נשארו ללקט',
       allPicked: 'הכל לוקט ✓',
+      noteLabel: 'הערת הזכיין',
     },
   },
   admin: {
