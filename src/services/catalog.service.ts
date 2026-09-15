@@ -765,10 +765,12 @@ export class CatalogService {
 
   /**
    * Add a variant (color / size label) to the given groups: creates
-   * "<group> <label>" per group (price 0, invented 600xx barcode). Groups with
-   * a shared billing SKU pass it on (invoiceBarcode); groups without one
-   * create a regular product that bills its own barcode. An existing HIDDEN
-   * variant is reactivated; an ACTIVE one is skipped.
+   * "<group> <label>" per group (price 0, invented 600xx barcode). The new
+   * variant always bills under a RECOGNIZED SKU (invoiceBarcode): the group's
+   * shared billing barcode when it has one, otherwise the group's main
+   * product barcode (the member named like the group, or the first active
+   * member) — internal codes never reach the ERP intake file. An existing
+   * HIDDEN variant is reactivated; an ACTIVE one is skipped.
    * Throws INVALID_COLOR | INVALID_GROUPS | VARIANT_GROUP_NOT_FOUND.
    */
   static async addVariantColor(
@@ -788,6 +790,7 @@ export class CatalogService {
     for (const groupName of groupNames) {
       const group = byName.get(groupName)
       if (!group) throw new Error('VARIANT_GROUP_NOT_FOUND')
+      const billing = group.barcode ?? (await this.mainGroupBarcode(groupName))
 
       const name = `${groupName} ${label}`
       const existing = await prisma.product.findFirst({ where: { name } })
@@ -798,7 +801,7 @@ export class CatalogService {
             data: {
               status: ProductStatus.ACTIVE,
               groupName,
-              ...(group.barcode ? { invoiceBarcode: group.barcode } : {}),
+              ...(billing ? { invoiceBarcode: billing } : {}),
             },
           })
           reactivated++
@@ -822,12 +825,29 @@ export class CatalogService {
           priceAgorot: 0,
           status: ProductStatus.ACTIVE,
           groupName,
-          invoiceBarcode: group.barcode,
+          invoiceBarcode: billing,
         },
       })
       created++
     }
     return { created, reactivated, skipped }
+  }
+
+  /**
+   * The "main" barcode of a group without a shared billing SKU: the member
+   * whose name IS the group name (e.g. "בגד גוף תינוק"), else the first
+   * active member, else the first member.
+   */
+  private static async mainGroupBarcode(groupName: string): Promise<string | null> {
+    const main = await prisma.product.findFirst({ where: { groupName, name: groupName } })
+    if (main) return main.barcode
+    const firstActive = await prisma.product.findFirst({
+      where: { groupName, status: ProductStatus.ACTIVE },
+      orderBy: { name: 'asc' },
+    })
+    if (firstActive) return firstActive.barcode
+    const first = await prisma.product.findFirst({ where: { groupName }, orderBy: { name: 'asc' } })
+    return first?.barcode ?? null
   }
 
   /**

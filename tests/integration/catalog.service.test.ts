@@ -298,13 +298,15 @@ describe('CatalogService', () => {
       expect(p?.status).toBe(ProductStatus.HIDDEN)
     })
 
-    it('adds a size variant to a group without shared billing (own barcode)', async () => {
+    it('adds a size variant to a group without shared billing — bills under the main member SKU', async () => {
       await seedFrames()
       const result = await CatalogService.addVariantColor('מידה XL', ['חולצה'])
       expect(result).toEqual({ created: 1, reactivated: 0, skipped: 0 })
       const xl = await prisma.product.findFirst({ where: { name: 'חולצה מידה XL' } })
       expect(xl?.groupName).toBe('חולצה')
-      expect(xl?.invoiceBarcode).toBeNull()
+      // Internal codes never reach the ERP: the new size bills under the
+      // group's main (first active) member barcode.
+      expect(xl?.invoiceBarcode).toBe('SHIRT-S')
       expect(/^6\d{4}$/.test(xl!.barcode)).toBe(true)
     })
 

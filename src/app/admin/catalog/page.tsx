@@ -88,17 +88,31 @@ export default function AdminCatalogPage() {
     setPage(1)
   }, [search, categoryFilter, statusFilter])
 
-  // Variant color groups (frames/inks/cushions… — members share a billing
-  // barcode via invoiceBarcode) collapse into ONE row; colors are managed via
-  // the 🎨 tool, so individual color products aren't shown or hideable here.
+  // Variant color groups (frames/inks/cushions…) collapse into ONE row — but
+  // only when EVERY member either bills under the shared SKU (invoiceBarcode)
+  // or IS the billing source (its own barcode = the shared SKU). Groups where
+  // members keep their own real SKUs/prices (shirts…) stay as regular rows.
   type Row =
     | { kind: 'product'; product: Product }
     | { kind: 'group'; groupName: string; members: Product[] }
 
   const rows: Row[] = (() => {
-    const variantGroups = new Set(
-      products.filter((p) => p.groupName && p.invoiceBarcode).map((p) => p.groupName!)
-    )
+    const byGroup = new Map<string, Product[]>()
+    for (const p of products) {
+      if (!p.groupName) continue
+      const list = byGroup.get(p.groupName) ?? []
+      list.push(p)
+      byGroup.set(p.groupName, list)
+    }
+    const variantGroups = new Set<string>()
+    for (const [g, members] of byGroup) {
+      const billing = members.find((m) => m.invoiceBarcode)?.invoiceBarcode
+      if (!billing) continue
+      const allShared = members.every(
+        (m) => m.invoiceBarcode === billing || m.barcode === billing
+      )
+      if (allShared) variantGroups.add(g)
+    }
     const seen = new Set<string>()
     const out: Row[] = []
     for (const p of products) {
@@ -108,7 +122,7 @@ export default function AdminCatalogPage() {
         out.push({
           kind: 'group',
           groupName: p.groupName,
-          members: products.filter((x) => x.groupName === p.groupName),
+          members: byGroup.get(p.groupName)!,
         })
       } else {
         out.push({ kind: 'product', product: p })
