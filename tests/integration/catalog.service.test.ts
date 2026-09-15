@@ -233,23 +233,25 @@ describe('CatalogService', () => {
           { name: 'מסגרת 10x15 לבנה', barcode: '7460', categoryId: cat.id, priceAgorot: 0, groupName: 'מסגרת 10x15', invoiceBarcode: '7291027110152' },
           { name: 'מסגרת 10x15 שחורה', barcode: '60041', categoryId: cat.id, priceAgorot: 0, groupName: 'מסגרת 10x15', invoiceBarcode: '7291027110152' },
           { name: 'דיו RICOH שחור', barcode: '60060', categoryId: cat.id, priceAgorot: 0, groupName: 'דיו RICOH', invoiceBarcode: '857122883314' },
-          // group without any invoiceBarcode — NOT a variant group
+          // group without any invoiceBarcode — variants bill their own barcode
           { name: 'חולצה מידה S', barcode: 'SHIRT-S', categoryId: cat.id, priceAgorot: 0, groupName: 'חולצה' },
         ],
       })
       return cat
     }
 
-    it('lists only groups with a shared billing barcode', async () => {
+    it('lists all groups, marking shared billing', async () => {
       await seedFrames()
       const groups = await CatalogService.listVariantGroups()
-      expect(groups.map((g) => g.groupName).sort()).toEqual(['דיו RICOH', 'מסגרת 10x15'].sort())
+      expect(groups.map((g) => g.groupName).sort()).toEqual(['דיו RICOH', 'חולצה', 'מסגרת 10x15'].sort())
       const frame = groups.find((g) => g.groupName === 'מסגרת 10x15')!
       expect(frame.barcode).toBe('7291027110152')
+      expect(frame.sharedBilling).toBe(true)
       expect(frame.colors.sort()).toEqual(['לבנה', 'עץ', 'שחורה'].sort())
-      const ink = groups.find((g) => g.groupName === 'דיו RICOH')!
-      expect(ink.barcode).toBe('857122883314')
-      expect(ink.colors).toEqual(['שחור'])
+      const shirts = groups.find((g) => g.groupName === 'חולצה')!
+      expect(shirts.barcode).toBeNull()
+      expect(shirts.sharedBilling).toBe(false)
+      expect(shirts.colors).toEqual(['מידה S'])
     })
 
     it('addVariantColor creates a product per group with the billing barcode', async () => {
@@ -296,12 +298,43 @@ describe('CatalogService', () => {
       expect(p?.status).toBe(ProductStatus.HIDDEN)
     })
 
+    it('adds a size variant to a group without shared billing (own barcode)', async () => {
+      await seedFrames()
+      const result = await CatalogService.addVariantColor('מידה XL', ['חולצה'])
+      expect(result).toEqual({ created: 1, reactivated: 0, skipped: 0 })
+      const xl = await prisma.product.findFirst({ where: { name: 'חולצה מידה XL' } })
+      expect(xl?.groupName).toBe('חולצה')
+      expect(xl?.invoiceBarcode).toBeNull()
+      expect(/^6\d{4}$/.test(xl!.barcode)).toBe(true)
+    })
+
     it('rejects invalid color or unknown group', async () => {
       await seedFrames()
       await expect(CatalogService.addVariantColor('  ', ['מסגרת 10x15'])).rejects.toThrow('INVALID_COLOR')
       await expect(CatalogService.addVariantColor('זהב', [])).rejects.toThrow('INVALID_GROUPS')
       await expect(CatalogService.addVariantColor('זהב', ['לא קיים'])).rejects.toThrow('VARIANT_GROUP_NOT_FOUND')
-      await expect(CatalogService.addVariantColor('זהב', ['חולצה'])).rejects.toThrow('VARIANT_GROUP_NOT_FOUND')
+    })
+
+    it('addFrameSize creates a new size group with colors under one SKU', async () => {
+      await seedFrames()
+      const result = await CatalogService.addFrameSize({
+        size: '60*80',
+        barcode: 'REAL-6080',
+        colors: ['לבנה', 'שחורה'],
+      })
+      expect(result.groupName).toBe('מסגרת 60x80')
+      expect(result.barcode).toBe('REAL-6080')
+      expect(result.created).toBe(2)
+      const members = await prisma.product.findMany({ where: { groupName: 'מסגרת 60x80' } })
+      expect(members).toHaveLength(2)
+      expect(members.every((m) => m.invoiceBarcode === 'REAL-6080')).toBe(true)
+
+      await expect(
+        CatalogService.addFrameSize({ size: '60x80', colors: ['לבנה'] })
+      ).rejects.toThrow('SIZE_EXISTS')
+      await expect(
+        CatalogService.addFrameSize({ size: 'abc', colors: ['לבנה'] })
+      ).rejects.toThrow('INVALID_SIZE')
     })
 
     it('setVariantGroupBarcode updates the billing SKU on all members', async () => {

@@ -10,6 +10,12 @@ const mutateSchema = z.object({
   remove: z.boolean().optional(),
 })
 
+const newSizeSchema = z.object({
+  size: z.string().min(3).max(20),
+  barcode: z.string().max(64).optional(),
+  colors: z.array(z.string().min(1).max(40)).min(1).max(20),
+})
+
 function authError(error: string | null) {
   if (error === 'Forbidden') {
     return NextResponse.json(
@@ -41,24 +47,30 @@ export async function GET(req: NextRequest) {
 }
 
 /**
- * POST /api/frame-colors — add a color to (or with remove:true hide it from)
- * the selected variant groups. ADMIN only.
+ * POST /api/frame-colors — three actions (ADMIN only):
+ *   - { colorName, groups }              add a variant to the groups
+ *   - { colorName, groups, remove:true } hide the variant in the groups
+ *   - { size, colors, barcode? }         create a NEW frame size group
  */
 export async function POST(req: NextRequest) {
   const { authenticated, error } = await requireSession(req, ['ADMIN'])
   if (!authenticated || error) return authError(error)
 
-  let parsed
+  let raw: unknown
   try {
-    parsed = mutateSchema.parse(await req.json())
+    raw = await req.json()
   } catch {
-    return NextResponse.json(
-      { error: { code: 'VALIDATION', message: i18n.errors.serverError } },
-      { status: 400 }
-    )
+    raw = {}
   }
 
   try {
+    if (raw && typeof raw === 'object' && 'size' in raw) {
+      const parsed = newSizeSchema.parse(raw)
+      const result = await CatalogService.addFrameSize(parsed)
+      return NextResponse.json(result, { status: 201 })
+    }
+
+    const parsed = mutateSchema.parse(raw)
     if (parsed.remove) {
       const result = await CatalogService.removeVariantColor(parsed.colorName, parsed.groups)
       return NextResponse.json(result)
@@ -66,14 +78,31 @@ export async function POST(req: NextRequest) {
     const result = await CatalogService.addVariantColor(parsed.colorName, parsed.groups)
     return NextResponse.json(result, { status: 201 })
   } catch (err) {
+    if (err instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: { code: 'VALIDATION', message: i18n.errors.serverError } },
+        { status: 400 }
+      )
+    }
     const code = err instanceof Error ? err.message : 'SERVER_ERROR'
-    if (code === 'INVALID_COLOR' || code === 'INVALID_GROUPS') {
+    if (
+      code === 'INVALID_COLOR' ||
+      code === 'INVALID_GROUPS' ||
+      code === 'INVALID_SIZE' ||
+      code === 'INVALID_COLORS'
+    ) {
       return NextResponse.json(
         { error: { code, message: i18n.admin.catalog.frameColorInvalid } },
         { status: 400 }
       )
     }
-    if (code === 'VARIANT_GROUP_NOT_FOUND') {
+    if (code === 'SIZE_EXISTS') {
+      return NextResponse.json(
+        { error: { code, message: i18n.admin.catalog.frameSizeExists } },
+        { status: 409 }
+      )
+    }
+    if (code === 'VARIANT_GROUP_NOT_FOUND' || code === 'FRAME_CATEGORY_NOT_FOUND') {
       return NextResponse.json(
         { error: { code, message: i18n.errors.notFound } },
         { status: 404 }

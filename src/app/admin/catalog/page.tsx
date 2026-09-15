@@ -1301,12 +1301,15 @@ function FrameColorForm({
   onError: (msg: string) => void
 }) {
   const [groups, setGroups] = useState<
-    Array<{ groupName: string; barcode: string; colors: string[] }>
+    Array<{ groupName: string; barcode: string | null; sharedBilling: boolean; colors: string[] }>
   >([])
   const [loading, setLoading] = useState(true)
   const [colorName, setColorName] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [saving, setSaving] = useState(false)
+  const [newSize, setNewSize] = useState('')
+  const [newSizeBarcode, setNewSizeBarcode] = useState('')
+  const [newSizeColors, setNewSizeColors] = useState('לבנה, שחורה, עץ')
 
   useEffect(() => {
     let cancelled = false
@@ -1364,6 +1367,34 @@ function FrameColorForm({
             .replace('{skipped}', String(data.skipped))
         )
       }
+    } catch {
+      onError(i18n.errors.network)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function addSize() {
+    if (!newSize.trim()) return
+    const colors = newSizeColors.split(',').map((c) => c.trim()).filter(Boolean)
+    if (colors.length === 0) return
+    setSaving(true)
+    try {
+      const res = await fetch('/api/frame-colors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          size: newSize.trim(),
+          barcode: newSizeBarcode.trim() || undefined,
+          colors,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        onError(data?.error?.message ?? i18n.errors.serverError)
+        return
+      }
+      onDone(t.frameSizeCreated.replace('{group}', data.groupName).replace('{count}', String(data.created)))
     } catch {
       onError(i18n.errors.network)
     } finally {
@@ -1446,6 +1477,54 @@ function FrameColorForm({
             >
               {saving ? t.saving : t.frameColorCreate}
             </button>
+          </div>
+
+          <div className="mt-5 pt-4 border-t border-dashed border-gray-200">
+            <div className="text-sm font-semibold text-gray-700 mb-1">➕ {t.frameSizeNew}</div>
+            <p className="text-xs text-gray-500 mb-2">{t.frameSizeHint}</p>
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="block">
+                <span className="text-xs text-gray-500">{t.frameSizeLabel}</span>
+                <input
+                  value={newSize}
+                  disabled={saving}
+                  maxLength={20}
+                  dir="ltr"
+                  placeholder="60x80"
+                  onChange={(e) => setNewSize(e.target.value)}
+                  className="mt-1 w-28 rounded-lg border border-gray-300 px-3 py-2 text-sm text-left focus:border-primary focus:outline-none disabled:opacity-50"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs text-gray-500">{t.frameSizeBarcode}</span>
+                <input
+                  value={newSizeBarcode}
+                  disabled={saving}
+                  maxLength={64}
+                  dir="ltr"
+                  placeholder={t.frameSizeBarcodePlaceholder}
+                  onChange={(e) => setNewSizeBarcode(e.target.value)}
+                  className="mt-1 w-44 rounded-lg border border-gray-300 px-3 py-2 text-sm text-left font-mono focus:border-primary focus:outline-none disabled:opacity-50"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs text-gray-500">{t.frameSizeColors}</span>
+                <input
+                  value={newSizeColors}
+                  disabled={saving}
+                  maxLength={200}
+                  onChange={(e) => setNewSizeColors(e.target.value)}
+                  className="mt-1 w-full sm:w-56 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none disabled:opacity-50"
+                />
+              </label>
+              <button
+                onClick={() => void addSize()}
+                disabled={saving || !newSize.trim() || !newSizeColors.trim()}
+                className="bg-primary text-white rounded-lg px-4 py-2 text-sm font-semibold hover:opacity-90 disabled:opacity-50"
+              >
+                {saving ? t.saving : t.frameSizeCreate}
+              </button>
+            </div>
           </div>
         </>
       )}

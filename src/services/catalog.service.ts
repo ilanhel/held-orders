@@ -733,12 +733,12 @@ export class CatalogService {
   // ---------------------------------------------------------------------------
 
   /**
-   * Groups that have at least one product with an invoiceBarcode override.
-   * Returns the group's billing barcode and its current color labels
-   * (product name minus the group-name prefix). Used by the admin color tool.
+   * All variant groups for the admin color/size tool: every product group,
+   * with its billing barcode (null = each variant bills its own barcode, e.g.
+   * shirts with real per-size SKUs) and its visible variant labels.
    */
   static async listVariantGroups(): Promise<
-    Array<{ groupName: string; barcode: string; colors: string[] }>
+    Array<{ groupName: string; barcode: string | null; sharedBilling: boolean; colors: string[] }>
   > {
     const products = await prisma.product.findMany({
       where: { groupName: { not: null } },
@@ -751,32 +751,32 @@ export class CatalogService {
       list.push(p)
       groups.set(p.groupName!, list)
     }
-    const result: Array<{ groupName: string; barcode: string; colors: string[] }> = []
+    const result: Array<{ groupName: string; barcode: string | null; sharedBilling: boolean; colors: string[] }> = []
     for (const [groupName, list] of groups) {
-      const billing = list.find((p) => p.invoiceBarcode)?.invoiceBarcode
-      if (!billing) continue
+      const billing = list.find((p) => p.invoiceBarcode)?.invoiceBarcode ?? null
       const colors = list
         .filter((p) => p.status !== ProductStatus.HIDDEN)
         .map((p) => p.name.replace(groupName, '').trim())
         .filter(Boolean)
-      result.push({ groupName, barcode: billing, colors })
+      result.push({ groupName, barcode: billing, sharedBilling: billing !== null, colors })
     }
     return result.sort((a, b) => a.groupName.localeCompare(b.groupName, 'he', { numeric: true }))
   }
 
   /**
-   * Add a color to the given variant groups: creates "<group> <color>" per
-   * group (price 0, invented 600xx barcode, invoiceBarcode = the group's
-   * billing barcode). An existing HIDDEN color is reactivated; an ACTIVE one
-   * is skipped. No franchisee notification is sent.
+   * Add a variant (color / size label) to the given groups: creates
+   * "<group> <label>" per group (price 0, invented 600xx barcode). Groups with
+   * a shared billing SKU pass it on (invoiceBarcode); groups without one
+   * create a regular product that bills its own barcode. An existing HIDDEN
+   * variant is reactivated; an ACTIVE one is skipped.
    * Throws INVALID_COLOR | INVALID_GROUPS | VARIANT_GROUP_NOT_FOUND.
    */
   static async addVariantColor(
     colorName: string,
     groupNames: string[]
   ): Promise<{ created: number; reactivated: number; skipped: number }> {
-    const color = colorName.trim()
-    if (!color || /\d/.test(color)) throw new Error('INVALID_COLOR')
+    const label = colorName.trim()
+    if (!label) throw new Error('INVALID_COLOR')
     if (groupNames.length === 0) throw new Error('INVALID_GROUPS')
 
     const groups = await this.listVariantGroups()
@@ -789,13 +789,17 @@ export class CatalogService {
       const group = byName.get(groupName)
       if (!group) throw new Error('VARIANT_GROUP_NOT_FOUND')
 
-      const name = `${groupName} ${color}`
+      const name = `${groupName} ${label}`
       const existing = await prisma.product.findFirst({ where: { name } })
       if (existing) {
         if (existing.status === ProductStatus.HIDDEN) {
           await prisma.product.update({
             where: { id: existing.id },
-            data: { status: ProductStatus.ACTIVE, groupName, invoiceBarcode: group.barcode },
+            data: {
+              status: ProductStatus.ACTIVE,
+              groupName,
+              ...(group.barcode ? { invoiceBarcode: group.barcode } : {}),
+            },
           })
           reactivated++
         } else {
@@ -870,6 +874,56 @@ export class CatalogService {
       data: { invoiceBarcode: value },
     })
     return { updated: result.count }
+  }
+
+  /**
+   * Add a new plain-frame SIZE: creates the group "מסגרת <WxH>" with one
+   * product per requested color, all billing under one SKU (the given barcode,
+   * or the first color's invented code when omitted). Size separators are
+   * normalized (60*80 / 60/80 → 60x80).
+   * Throws INVALID_SIZE | INVALID_COLORS | SIZE_EXISTS | FRAME_CATEGORY_NOT_FOUND.
+   */
+  static async addFrameSize(input: {
+    size: string
+    barcode?: string
+    colors: string[]
+  }): Promise<{ groupName: string; barcode: string; created: number }> {
+    const size = input.size.trim().replace(/[*\/×X]/g, 'x').replace(/\s+/g, '')
+    if (!/^\d{1,3}x\d{1,3}$/.test(size)) throw new Error('INVALID_SIZE')
+
+    const colors = [...new Set(input.colors.map((c) => c.trim()).filter(Boolean))]
+    if (colors.length === 0 || colors.some((c) => /\d/.test(c))) {
+      throw new Error('INVALID_COLORS')
+    }
+
+    const groupName = `מסגרת ${size}`
+    const existing = await prisma.product.findFirst({ where: { groupName } })
+    if (existing) throw new Error('SIZE_EXISTS')
+
+    const category = await prisma.category.findFirst({ where: { name: 'מסגרות' } })
+    if (!category) throw new Error('FRAME_CATEGORY_NOT_FOUND')
+
+    let billing = input.barcode?.trim() || null
+    let created = 0
+    const createdIds: string[] = []
+    for (const color of colors) {
+      const own = await this.nextInventedBarcode()
+      if (!billing) billing = own
+      const product = await prisma.product.create({
+        data: {
+          name: `${groupName} ${color}`,
+          barcode: own,
+          categoryId: category.id,
+          priceAgorot: 0,
+          status: ProductStatus.ACTIVE,
+          groupName,
+          invoiceBarcode: billing,
+        },
+      })
+      createdIds.push(product.id)
+      created++
+    }
+    return { groupName, barcode: billing!, created }
   }
 
   /** Next free invented SKU in the 600xx internal series (60000-69999). */
