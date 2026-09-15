@@ -1,0 +1,782 @@
+[
+  {
+    "id": "cmt1lshdk0007wv3msrrv6qre",
+    "name": "מסגרת 10x15 לבנה",
+    "barcode": "7460",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 10x15",
+    "invoiceBarcode": "7291027110152",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbhou3010iwvmwj2yg5p9h",
+    "name": "מסגרת 10x15 עץ",
+    "barcode": "7291027110152",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 10x15",
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbid34012kwvmwvcx8nnlt",
+    "name": "מסגרת 10x15 שחורה",
+    "barcode": "60041",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 10x15",
+    "invoiceBarcode": "7291027110152",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbjkgq016ewvmw96m9piah",
+    "name": "מסגרת 13x18 לבנה",
+    "barcode": "7291027600028",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 13x18",
+    "invoiceBarcode": "7291027113184",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbha1z00zcwvmw4rjp8e9r",
+    "name": "מסגרת 13x18 עץ",
+    "barcode": "7291027113184",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 13x18",
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbhil70100wvmw509a8e1q",
+    "name": "מסגרת 13x18 שחורה",
+    "barcode": "7291027076274",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 13x18",
+    "invoiceBarcode": "7291027113184",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbhaor00zewvmwkj6juabh",
+    "name": "מסגרת 15x21 לבנה",
+    "barcode": "7291027074621",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 15x21",
+    "invoiceBarcode": "7291027115218",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbhq3f010mwvmwa6b4f18p",
+    "name": "מסגרת 15x21 עץ",
+    "barcode": "7291027115218",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 15x21",
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbjl2f016gwvmw5f0zebto",
+    "name": "מסגרת 15x21 שחורה",
+    "barcode": "7291027600035",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 15x21",
+    "invoiceBarcode": "7291027115218",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmtb8ucjx0001wvg83gpaubyg",
+    "name": "מסגרת 15x15 עץ",
+    "barcode": "7291027115157",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 15x15",
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbhsv4010wwvmwdpef2jgo",
+    "name": "מסגרת 15x15 שחורה",
+    "barcode": "7291027077684",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 15x15",
+    "invoiceBarcode": "7291027115157",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbjp4g016uwvmwejtbjk8z",
+    "name": "מסגרת 15x15 לבנה",
+    "barcode": "7291027600219",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 15x15",
+    "invoiceBarcode": "7291027115157",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbhmus010cwvmwxl0dauwm",
+    "name": "מסגרת 18x24 לבנה",
+    "barcode": "7291027076427",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 18x24",
+    "invoiceBarcode": "7291027118240",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmtb8ucvb0003wvg82zgvnu70",
+    "name": "מסגרת 18x24 עץ",
+    "barcode": "7291027118240",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 18x24",
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmtb8ufy6000lwvg8lbid4lo3",
+    "name": "מסגרת 18x24 שחורה",
+    "barcode": "60034",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 18x24",
+    "invoiceBarcode": "7291027118240",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmtb8ud6n0005wvg89r4qzoxk",
+    "name": "מסגרת 20x20 עץ",
+    "barcode": "7291027120205",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 20x20",
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbhtdp010ywvmwxnb4f2zc",
+    "name": "מסגרת 20x20 שחורה",
+    "barcode": "7291027077691",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 20x20",
+    "invoiceBarcode": "7291027120205",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbjpul016wwvmwdipooie6",
+    "name": "מסגרת 20x20 לבנה",
+    "barcode": "7291027600226",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 20x20",
+    "invoiceBarcode": "7291027120205",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbhjtn0104wvmw2lule8ou",
+    "name": "מסגרת 20x30 לבנה",
+    "barcode": "7291027076304",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 20x30",
+    "invoiceBarcode": "7291027120304",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbh69g00z2wvmw0pok5v2j",
+    "name": "מסגרת 20x30 עץ",
+    "barcode": "7291027120304",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 20x30",
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbjmr7016mwvmwcvitahdi",
+    "name": "מסגרת 20x30 שחורה",
+    "barcode": "7291027600066",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 20x30",
+    "invoiceBarcode": "7291027120304",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbhc3y00ziwvmwynyntzp1",
+    "name": "מסגרת 21x30 עץ",
+    "barcode": "7291027121301",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 21x30",
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbhkfa0106wvmwqwkqliwc",
+    "name": "מסגרת 21x30 לבנה",
+    "barcode": "7291027076311",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 21x30",
+    "invoiceBarcode": "7291027121301",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbhrah010qwvmw6xl7g9t9",
+    "name": "מסגרת 21x30 שחורה",
+    "barcode": "7291027077226",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 21x30",
+    "invoiceBarcode": "7291027121301",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmtb8ue50000bwvg8i3h03l1k",
+    "name": "מסגרת 30x30 עץ",
+    "barcode": "7291027074706",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 30x30",
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbjqd1016ywvmwk5zia3z3",
+    "name": "מסגרת 30x30 שחורה",
+    "barcode": "7291027600233",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 30x30",
+    "invoiceBarcode": "7291027074706",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbhzw4011iwvmwx5utuxbz",
+    "name": "מסגרת 30x30 לבנה",
+    "barcode": "7291027077790",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 30x30",
+    "invoiceBarcode": "7291027074706",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbjnyq016qwvmw8np6s0h2",
+    "name": "מסגרת 30x40 לבנה",
+    "barcode": "7291027600097",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 30x40",
+    "invoiceBarcode": "7291027130402",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbhcwf00zkwvmw77x74yf1",
+    "name": "מסגרת 30x40 עץ",
+    "barcode": "7291027130402",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 30x40",
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbidmp012mwvmwtt81e8sr",
+    "name": "מסגרת 30x40 שחורה",
+    "barcode": "7291027113040",
+    "status": "HIDDEN",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbhf1700zqwvmwylv9hulj",
+    "name": "מסגרת 40x60 עץ",
+    "barcode": "7291027074720",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 40x60",
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmtb8ufbf000hwvg8qpowugax",
+    "name": "מסגרת 40x60 לבנה",
+    "barcode": "60032",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 40x60",
+    "invoiceBarcode": "7291027074720",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbhh8t00zwwvmwi4vity1u",
+    "name": "מסגרת 40x60 שחורה",
+    "barcode": "7291027075291",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 40x60",
+    "invoiceBarcode": "7291027074720",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmtb8ufmt000jwvg8uxnlcppe",
+    "name": "מסגרת 50x70 לבנה",
+    "barcode": "60033",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 50x70",
+    "invoiceBarcode": "7291027074737",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbhftm00zswvmwo167rpce",
+    "name": "מסגרת 50x70 עץ",
+    "barcode": "7291027074737",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 50x70",
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmtb8ug9l000nwvg8gz4070i8",
+    "name": "מסגרת 50x70 שחורה",
+    "barcode": "60035",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 50x70",
+    "invoiceBarcode": "7291027074737",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbhm2c010awvmwqqrf0nbs",
+    "name": "מסגרת 30x45 לבנה",
+    "barcode": "7291027076335",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 30x45",
+    "invoiceBarcode": "7291027074683",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbhdj500zmwvmwo7ahor92",
+    "name": "מסגרת 30x45 עץ",
+    "barcode": "7291027074683",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 30x45",
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbhrss010swvmwux5uwexf",
+    "name": "מסגרת 30x45 שחורה",
+    "barcode": "7291027077240",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 30x45",
+    "invoiceBarcode": "7291027074683",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbh7ub00z6wvmw0w88k99w",
+    "name": "מסגרת עץ חלקה 2ס\"מ גודל 20x25 (טבעי, לבן)",
+    "barcode": "7291027072061",
+    "status": "HIDDEN",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmtfjnpgc000hwvub58c9f866",
+    "name": "מסגרת 40x50 שחורה",
+    "barcode": "60036",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 40x50",
+    "invoiceBarcode": "7291027074744",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmtfjnaxu0005wvubym5hxgmp",
+    "name": "מסגרת 40x50 לבנה",
+    "barcode": "60037",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 40x50",
+    "invoiceBarcode": "7291027074744",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbhgj700zuwvmw1l8erwh4",
+    "name": "מסגרת 40x50 עץ",
+    "barcode": "7291027074744",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 40x50",
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmtfjnrcm000jwvubbnay5t58",
+    "name": "מסגרת 50x50 שחורה",
+    "barcode": "7430100252895",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 50x50",
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmtfjncsy0007wvubaj31b30k",
+    "name": "מסגרת 50x50 לבנה",
+    "barcode": "60039",
+    "status": "ACTIVE",
+    "groupName": "מסגרת 50x50",
+    "invoiceBarcode": "60038",
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbesvh00s6wvmwpl0oxe1r",
+    "name": "אלבום מגנטי תפור עלים גודל 21*22 ל36 עמ קטן",
+    "barcode": "7291027004161",
+    "status": "HIDDEN",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cms2x7k3v0000l2048k1vzjv9",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbepf600rwwvmw8z4x26qg",
+    "name": "אלבום תפור עלים גודל 10*15 ל200 תמונות",
+    "barcode": "7291027004024",
+    "status": "HIDDEN",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cms2x7k3v0000l2048k1vzjv9",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbf2by00sywvmwdyg3c4bp",
+    "name": "אלבום סופר 200 תמונות",
+    "barcode": "7291027004628",
+    "status": "HIDDEN",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cms2x7k3v0000l2048k1vzjv9",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbexqz00skwvmwiilhh2u5",
+    "name": "אלבום מגנטי  קנבס 40 עמ' - 432",
+    "barcode": "7291027004321",
+    "status": "ACTIVE",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cms2x7k3v0000l2048k1vzjv9",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbf0wr00suwvmwtoiayiie",
+    "name": "אלבום מגנטי ל80 עמודים",
+    "barcode": "7291027004468",
+    "status": "ACTIVE",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cms2x7k3v0000l2048k1vzjv9",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbf09a00sswvmw7mel5osu",
+    "name": "אלבום מגנטי ל-60 עמודים",
+    "barcode": "7291027004444",
+    "status": "ACTIVE",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cms2x7k3v0000l2048k1vzjv9",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbf7s800tewvmwfr5rzq0u",
+    "name": "אלבום עיצוב 60 עמ׳ פרגמנט",
+    "barcode": "7291027007179",
+    "status": "ACTIVE",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cms2x7k3v0000l2048k1vzjv9",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbeqvi00s0wvmw862vk3pl",
+    "name": "אלבום גודל 13*18 ל50 תמונות",
+    "barcode": "7291027004116",
+    "status": "ACTIVE",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cms2x7k3v0000l2048k1vzjv9",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbf4au00t4wvmwngcptb3c",
+    "name": "אלבום כיסים pp עלים 300 תמונות גודל 15X10",
+    "barcode": "7291027004826",
+    "status": "ACTIVE",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cms2x7k3v0000l2048k1vzjv9",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbetgz00s8wvmw37f1khoh",
+    "name": "אלבום תפור יוקרתי גודל 13*18 ל300 תמונות",
+    "barcode": "7291027004208",
+    "status": "ACTIVE",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cms2x7k3v0000l2048k1vzjv9",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbgon600xmwvmw0a86otos",
+    "name": "אלבום כיסים  120 13*18",
+    "barcode": "7291027040824",
+    "status": "ACTIVE",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cms2x7k3v0000l2048k1vzjv9",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbgp8j00xowvmw03lb16ft",
+    "name": "אלבום כיסים יוקרתי 144 תמונות גודל 13*18",
+    "barcode": "7291027040867",
+    "status": "ACTIVE",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cms2x7k3v0000l2048k1vzjv9",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbgstw00xywvmw8u7xwhfc",
+    "name": "אלבום כיסים דמוי עור 120 10*15 תפור",
+    "barcode": "7291027050106",
+    "status": "ACTIVE",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cms2x7k3v0000l2048k1vzjv9",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbgvim00y6wvmw46v0mcnm",
+    "name": "אלבום כיסים 10X15 ל-36 תמונות 5204",
+    "barcode": "7291027052049",
+    "status": "ACTIVE",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cms2x7k3v0000l2048k1vzjv9",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbf9u700tkwvmwojf9gml1",
+    "name": "10X15 אלבום תפור +חלון \"יוקרתי\" ל-300 תמונות גודל",
+    "barcode": "7291027007223",
+    "status": "ACTIVE",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cms2x7k3v0000l2048k1vzjv9",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbfde500tuwvmweyzy8g39",
+    "name": "מסגרת פיוטר כפולה 10x15 מתקפלת",
+    "barcode": "7291027007971",
+    "status": "HIDDEN",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbg2wx00vuwvmwuj78p34g",
+    "name": "מסגרת שני צבעים משולשת מתקפלת גודל 13x18 שוכב עומד",
+    "barcode": "7291027021366",
+    "status": "HIDDEN",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbgggr00wywvmwrjr9rwo9",
+    "name": "מסגרת מתכת לבנה שילוב עיטור כסף עדין 15x21",
+    "barcode": "7291027031303",
+    "status": "HIDDEN",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbgc0100wkwvmwe0g3w64t",
+    "name": "מסגרת מתכת לבנה שילוב עיטור כסף עדין 13x18",
+    "barcode": "7291027030993",
+    "status": "HIDDEN",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbfe3s00twwvmwz22azx83",
+    "name": "מסגרת פיוטר כפולה 13x18 מתקפלת",
+    "barcode": "7291027007988",
+    "status": "HIDDEN",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbg2a600vswvmwxmflnimk",
+    "name": "מסגרת שני צבעים כפולה מתקפלת 1318 שוכב עומד",
+    "barcode": "7291027021342",
+    "status": "HIDDEN",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbg1hq00vqwvmwv9zjjj84",
+    "name": "שוכב + עומד 10x15 מסגרת שני צבעים כפולה מתקפלת",
+    "barcode": "7291027021335",
+    "status": "HIDDEN",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbfij200u8wvmw1w16cjsx",
+    "name": "מסגרת פיוטר כסף \"צפה\" כפולה / מתקפלת גודל 10x15 שוכבת",
+    "barcode": "7291027010223",
+    "status": "HIDDEN",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbfj8o00uawvmw9e1eyseg",
+    "name": "מסגרת פיוטר זהב \"צפה\" כפולה / מתקפלת 18x13 שוכבת",
+    "barcode": "7291027010230",
+    "status": "HIDDEN",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbfkhs00uewvmwad6veonf",
+    "name": "מסגרת פיוטר זהב \"צפה\" כפולה/ מתקפלת גודל 10x15 לתמ עומדת",
+    "barcode": "7291027010254",
+    "status": "HIDDEN",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbfcok00tswvmwpbxaraf3",
+    "name": "מסגרת פיוטר SILVER משולשת / מתקפלת גודל 13x18",
+    "barcode": "7291027007964",
+    "status": "HIDDEN",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbjdtt015swvmwpzinq0xd",
+    "name": "מסגרת זהב חלק 15x21",
+    "barcode": "7291027468154",
+    "status": "HIDDEN",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbjd71015qwvmwkwn5qtja",
+    "name": "מסגרת זהב 13x18",
+    "barcode": "7291027468130",
+    "status": "HIDDEN",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbjckb015owvmwccuwqqql",
+    "name": "מסגרת זהב 10x15",
+    "barcode": "7291027468109",
+    "status": "HIDDEN",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbhhuc00zywvmwmwbui6sz",
+    "name": "מסגרת  10x15",
+    "barcode": "7291027076267",
+    "status": "HIDDEN",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmqtbh4rf00yywvmwqbmz7ixw",
+    "name": "מסגרת עץ חלקה 2 ס\"מ 13x18 7201",
+    "barcode": "7291027072016",
+    "status": "HIDDEN",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmtpx9l500001wvnnc9ii8yy6",
+    "name": "פיוטר 20/30 כסף",
+    "barcode": "60054",
+    "status": "ACTIVE",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  },
+  {
+    "id": "cmtpx9mr20003wvnnwpc1cx8j",
+    "name": "פיוטר 20/30 זהב",
+    "barcode": "60055",
+    "status": "ACTIVE",
+    "groupName": null,
+    "invoiceBarcode": null,
+    "categoryId": "cmqry25da001ii504dbmjp4xb",
+    "stockQty": 0
+  }
+]
