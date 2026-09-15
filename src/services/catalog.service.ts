@@ -850,6 +850,28 @@ export class CatalogService {
     return { hidden }
   }
 
+  /**
+   * Change a variant group's billing SKU: every product in the group gets
+   * invoiceBarcode = the new barcode, so all colors invoice under it.
+   * Throws INVALID_BARCODE | VARIANT_GROUP_NOT_FOUND.
+   */
+  static async setVariantGroupBarcode(
+    groupName: string,
+    barcode: string
+  ): Promise<{ updated: number }> {
+    const value = barcode.trim()
+    if (!value || value.length > 64) throw new Error('INVALID_BARCODE')
+
+    const members = await prisma.product.count({ where: { groupName } })
+    if (members === 0) throw new Error('VARIANT_GROUP_NOT_FOUND')
+
+    const result = await prisma.product.updateMany({
+      where: { groupName },
+      data: { invoiceBarcode: value },
+    })
+    return { updated: result.count }
+  }
+
   /** Next free invented SKU in the 600xx internal series (60000-69999). */
   private static async nextInventedBarcode(): Promise<string> {
     for (let n = 60056; n < 70000; n++) {

@@ -303,6 +303,19 @@ describe('CatalogService', () => {
       await expect(CatalogService.addVariantColor('זהב', ['לא קיים'])).rejects.toThrow('VARIANT_GROUP_NOT_FOUND')
       await expect(CatalogService.addVariantColor('זהב', ['חולצה'])).rejects.toThrow('VARIANT_GROUP_NOT_FOUND')
     })
+
+    it('setVariantGroupBarcode updates the billing SKU on all members', async () => {
+      await seedFrames()
+      const result = await CatalogService.setVariantGroupBarcode('מסגרת 10x15', 'NEW-SKU-99')
+      expect(result.updated).toBe(3)
+      const members = await prisma.product.findMany({ where: { groupName: 'מסגרת 10x15' } })
+      expect(members.every((m) => m.invoiceBarcode === 'NEW-SKU-99')).toBe(true)
+      const groups = await CatalogService.listVariantGroups()
+      expect(groups.find((g) => g.groupName === 'מסגרת 10x15')?.barcode).toBe('NEW-SKU-99')
+
+      await expect(CatalogService.setVariantGroupBarcode('מסגרת 10x15', '  ')).rejects.toThrow('INVALID_BARCODE')
+      await expect(CatalogService.setVariantGroupBarcode('לא קיים', 'X1')).rejects.toThrow('VARIANT_GROUP_NOT_FOUND')
+    })
   })
 
   describe('getByBarcode', () => {

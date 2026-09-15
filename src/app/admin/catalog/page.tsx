@@ -490,8 +490,17 @@ export default function AdminCatalogPage() {
                           🎨 {t.variantGroup}
                         </span>
                       </div>
-                      <div className="text-xs text-gray-500 mt-0.5">
-                        {g.members[0].categoryName} · {t.invoiceBarcodeShort}: {billing ?? '—'}
+                      <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-1 flex-wrap">
+                        <span>{g.members[0].categoryName} · {t.invoiceBarcodeShort}:</span>
+                        <GroupBarcodeEditor
+                          groupName={g.groupName}
+                          barcode={billing ?? ''}
+                          onSaved={() => {
+                            flash(t.groupBarcodeSaved)
+                            void load()
+                          }}
+                          onError={setError}
+                        />
                       </div>
                       <div className="flex flex-wrap gap-1 mt-1.5">
                         {active.map((m) => (
@@ -1441,5 +1450,101 @@ function FrameColorForm({
         </>
       )}
     </div>
+  )
+}
+
+/**
+ * Inline billing-SKU editor for a collapsed variant group row: click ✏️ to
+ * edit; saving updates the invoiceBarcode of ALL the group's color products.
+ */
+function GroupBarcodeEditor({
+  groupName,
+  barcode,
+  onSaved,
+  onError,
+}: {
+  groupName: string
+  barcode: string
+  onSaved: () => void
+  onError: (msg: string) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState(barcode)
+  const [saving, setSaving] = useState(false)
+
+  async function save() {
+    if (!value.trim() || value.trim() === barcode) {
+      setEditing(false)
+      return
+    }
+    setSaving(true)
+    try {
+      const res = await fetch('/api/frame-colors', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ groupName, barcode: value.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        onError(data?.error?.message ?? i18n.errors.serverError)
+        return
+      }
+      setEditing(false)
+      onSaved()
+    } catch {
+      onError(i18n.errors.network)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!editing) {
+    return (
+      <span className="inline-flex items-center gap-1">
+        <span className="font-mono" dir="ltr">{barcode || '—'}</span>
+        <button
+          onClick={() => {
+            setValue(barcode)
+            setEditing(true)
+          }}
+          className="text-blue-600 hover:underline"
+          title={t.groupBarcodeEdit}
+        >
+          ✏️
+        </button>
+      </span>
+    )
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1">
+      <input
+        value={value}
+        disabled={saving}
+        autoFocus
+        dir="ltr"
+        maxLength={64}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') void save()
+          if (e.key === 'Escape') setEditing(false)
+        }}
+        className="w-40 rounded-md border border-gray-300 px-2 py-1 text-xs text-left font-mono focus:border-primary focus:outline-none disabled:opacity-50"
+      />
+      <button
+        onClick={() => void save()}
+        disabled={saving || !value.trim()}
+        className="text-xs px-2 py-1 rounded-md bg-primary text-white disabled:opacity-50"
+      >
+        {saving ? t.saving : t.save}
+      </button>
+      <button
+        onClick={() => setEditing(false)}
+        disabled={saving}
+        className="text-xs px-2 py-1 rounded-md text-gray-500 hover:bg-gray-100"
+      >
+        {t.cancel}
+      </button>
+    </span>
   )
 }

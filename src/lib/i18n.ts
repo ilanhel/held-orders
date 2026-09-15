@@ -377,6 +377,8 @@ export const i18n = {
       variantGroup: 'מוצר עם צבעים',
       variantGroupNote: 'הוספה/הסרה של צבעים — דרך הכפתור 🎨 ניהול צבעים למעלה. כל הצבעים מחויבים באותו מק״ט.',
       invoiceBarcodeShort: 'מק״ט לחשבונית',
+      groupBarcodeEdit: 'עריכת מק״ט',
+      groupBarcodeSaved: 'המק״ט עודכן לכל הצבעים',
       price: 'מחיר (₪)',
       status: 'סטטוס',
       save: 'שמירה',

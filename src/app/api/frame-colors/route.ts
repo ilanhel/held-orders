@@ -86,3 +86,51 @@ export async function POST(req: NextRequest) {
     )
   }
 }
+
+const barcodeSchema = z.object({
+  groupName: z.string().min(1).max(120),
+  barcode: z.string().min(1).max(64),
+})
+
+/**
+ * PUT /api/frame-colors — change a variant group's billing SKU (applies to
+ * all colors of the group). ADMIN only.
+ */
+export async function PUT(req: NextRequest) {
+  const { authenticated, error } = await requireSession(req, ['ADMIN'])
+  if (!authenticated || error) return authError(error)
+
+  let parsed
+  try {
+    parsed = barcodeSchema.parse(await req.json())
+  } catch {
+    return NextResponse.json(
+      { error: { code: 'VALIDATION', message: i18n.errors.serverError } },
+      { status: 400 }
+    )
+  }
+
+  try {
+    const result = await CatalogService.setVariantGroupBarcode(parsed.groupName, parsed.barcode)
+    return NextResponse.json(result)
+  } catch (err) {
+    const code = err instanceof Error ? err.message : 'SERVER_ERROR'
+    if (code === 'INVALID_BARCODE') {
+      return NextResponse.json(
+        { error: { code, message: i18n.admin.catalog.frameColorInvalid } },
+        { status: 400 }
+      )
+    }
+    if (code === 'VARIANT_GROUP_NOT_FOUND') {
+      return NextResponse.json(
+        { error: { code, message: i18n.errors.notFound } },
+        { status: 404 }
+      )
+    }
+    console.error('[api/frame-colors PUT] error:', err)
+    return NextResponse.json(
+      { error: { code: 'SERVER_ERROR', message: i18n.errors.serverError } },
+      { status: 500 }
+    )
+  }
+}
