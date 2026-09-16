@@ -543,6 +543,7 @@ function PickRow({
 }) {
   const supplied = item.qtySupplied ?? item.qtyOrdered
   const isPartial = item.qtySupplied !== null && item.qtySupplied < item.qtyOrdered
+  const isExtra = item.qtySupplied !== null && item.qtySupplied > item.qtyOrdered
   // Local draft so the field can be cleared/typed into freely; null = follow `supplied`.
   const [draft, setDraft] = useState<string | null>(null)
 
@@ -612,7 +613,7 @@ function PickRow({
                 setDraft('')
                 return
               }
-              const n = Math.max(0, Math.min(item.qtyOrdered, parseInt(raw, 10)))
+              const n = Math.max(0, Math.min(9999, parseInt(raw, 10)))
               setDraft(String(n))
               onUpdate(n, item.picked)
             }}
@@ -623,9 +624,9 @@ function PickRow({
           <button
             onClick={() => {
               setDraft(null)
-              onUpdate(Math.min(item.qtyOrdered, supplied + 1), item.picked)
+              onUpdate(Math.min(9999, supplied + 1), item.picked)
             }}
-            disabled={disabled || supplied >= item.qtyOrdered}
+            disabled={disabled}
             className="w-11 h-11 rounded-lg border border-gray-300 text-xl font-bold text-gray-700 disabled:opacity-40 active:bg-gray-100"
             aria-label="+"
           >
@@ -635,6 +636,11 @@ function PickRow({
           {isPartial && (
             <span className="text-xs text-orange-600 font-medium mr-auto">
               {i18n.warehouse.pick.partialOrMissing}
+            </span>
+          )}
+          {isExtra && (
+            <span className="text-xs text-green-700 font-bold mr-auto">
+              +{supplied - item.qtyOrdered} {i18n.warehouse.pick.extraSupplied}
             </span>
           )}
         </div>

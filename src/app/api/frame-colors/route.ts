@@ -118,12 +118,15 @@ export async function POST(req: NextRequest) {
 
 const barcodeSchema = z.object({
   groupName: z.string().min(1).max(120),
-  barcode: z.string().min(1).max(64),
+  barcode: z.string().min(1).max(64).optional(),
+  unitsPerPack: z.number().int().min(1).max(10000).optional(),
+  orderNote: z.string().max(200).nullable().optional(),
 })
 
 /**
- * PUT /api/frame-colors — change a variant group's billing SKU (applies to
- * all colors of the group). ADMIN only.
+ * PUT /api/frame-colors — group-level updates applied to ALL the group's
+ * variants: billing SKU and/or pack settings (unitsPerPack + order note).
+ * ADMIN only.
  */
 export async function PUT(req: NextRequest) {
   const { authenticated, error } = await requireSession(req, ['ADMIN'])
@@ -140,11 +143,22 @@ export async function PUT(req: NextRequest) {
   }
 
   try {
-    const result = await CatalogService.setVariantGroupBarcode(parsed.groupName, parsed.barcode)
-    return NextResponse.json(result)
+    let updated = 0
+    if (parsed.barcode !== undefined) {
+      const r = await CatalogService.setVariantGroupBarcode(parsed.groupName, parsed.barcode)
+      updated = r.updated
+    }
+    if (parsed.unitsPerPack !== undefined || parsed.orderNote !== undefined) {
+      const r = await CatalogService.setVariantGroupPack(parsed.groupName, {
+        unitsPerPack: parsed.unitsPerPack,
+        orderNote: parsed.orderNote,
+      })
+      updated = Math.max(updated, r.updated)
+    }
+    return NextResponse.json({ updated })
   } catch (err) {
     const code = err instanceof Error ? err.message : 'SERVER_ERROR'
-    if (code === 'INVALID_BARCODE') {
+    if (code === 'INVALID_BARCODE' || code === 'INVALID_UNITS_PER_PACK') {
       return NextResponse.json(
         { error: { code, message: i18n.admin.catalog.frameColorInvalid } },
         { status: 400 }

@@ -1324,6 +1324,39 @@ function FrameColorForm({
   const [newSize, setNewSize] = useState('')
   const [newSizeBarcode, setNewSizeBarcode] = useState('')
   const [newSizeColors, setNewSizeColors] = useState('לבנה, שחורה, עץ')
+  const [packUnits, setPackUnits] = useState('')
+  const [packNote, setPackNote] = useState('')
+
+  async function applyPack() {
+    const units = Number(packUnits)
+    if (!packUnits.trim() || !Number.isInteger(units) || units < 1 || selected.size === 0) return
+    setSaving(true)
+    try {
+      let total = 0
+      for (const groupName of selected) {
+        const res = await fetch('/api/frame-colors', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            groupName,
+            unitsPerPack: units,
+            orderNote: packNote.trim() || null,
+          }),
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          onError(data?.error?.message ?? i18n.errors.serverError)
+          return
+        }
+        total += data.updated ?? 0
+      }
+      onDone(t.groupPackApplied.replace('{count}', String(total)))
+    } catch {
+      onError(i18n.errors.network)
+    } finally {
+      setSaving(false)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -1491,6 +1524,43 @@ function FrameColorForm({
             >
               {saving ? t.saving : t.frameColorCreate}
             </button>
+          </div>
+
+          <div className="mt-5 pt-4 border-t border-dashed border-gray-200">
+            <div className="text-sm font-semibold text-gray-700 mb-1">📦 {t.groupPackTitle}</div>
+            <p className="text-xs text-gray-500 mb-2">{t.groupPackHint}</p>
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="block">
+                <span className="text-xs text-gray-500">{t.groupPackUnits}</span>
+                <input
+                  value={packUnits}
+                  disabled={saving}
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="5"
+                  onChange={(e) => setPackUnits(e.target.value.replace(/[^0-9]/g, ''))}
+                  className="mt-1 w-24 rounded-lg border border-gray-300 px-3 py-2 text-sm text-left focus:border-primary focus:outline-none disabled:opacity-50"
+                />
+              </label>
+              <label className="block flex-1 min-w-[220px]">
+                <span className="text-xs text-gray-500">{t.groupPackNote}</span>
+                <input
+                  value={packNote}
+                  disabled={saving}
+                  maxLength={200}
+                  placeholder={t.groupPackNotePlaceholder}
+                  onChange={(e) => setPackNote(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none disabled:opacity-50"
+                />
+              </label>
+              <button
+                onClick={() => void applyPack()}
+                disabled={saving || !packUnits.trim() || selected.size === 0}
+                className="bg-primary text-white rounded-lg px-4 py-2 text-sm font-semibold hover:opacity-90 disabled:opacity-50"
+              >
+                {saving ? t.saving : t.groupPackApply}
+              </button>
+            </div>
           </div>
 
           <div className="mt-5 pt-4 border-t border-dashed border-gray-200">

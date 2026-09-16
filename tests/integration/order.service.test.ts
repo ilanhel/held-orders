@@ -777,14 +777,17 @@ describe('OrderService', () => {
       expect(updated.items[0].picked).toBe(true)
     })
 
-    it('rejects qtySupplied > qtyOrdered', async () => {
+    it('allows qtySupplied above qtyOrdered (franchisee asked for extra)', async () => {
       const d = await OrderService.getOrCreateDraft(storeId, userId)
       await OrderService.setItemQty(d.id, prodA.id, 2)
       const s = await OrderService.submitDraft(d.id, userId)
       await OrderService.transitionStatus(s.id, OrderStatus.RECEIVED, warehouseUserId)
 
+      const updated = await OrderService.updateItemSupply(s.id, s.items[0].id, 5, true)
+      expect(updated.items[0].qtySupplied).toBe(5)
+      // still rejects absurd values
       await expect(
-        OrderService.updateItemSupply(s.id, s.items[0].id, 5, true)
+        OrderService.updateItemSupply(s.id, s.items[0].id, 10000, true)
       ).rejects.toThrow('INVALID_QTY')
     })
 

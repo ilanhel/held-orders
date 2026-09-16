@@ -897,6 +897,35 @@ export class CatalogService {
   }
 
   /**
+   * Bulk pack settings for a whole variant group: unitsPerPack (invoice
+   * multiplier) and/or the franchisee order note — applied to ALL members
+   * (incl. hidden, so reactivated variants inherit them).
+   * Throws INVALID_UNITS_PER_PACK | VARIANT_GROUP_NOT_FOUND.
+   */
+  static async setVariantGroupPack(
+    groupName: string,
+    input: { unitsPerPack?: number; orderNote?: string | null }
+  ): Promise<{ updated: number }> {
+    if (
+      input.unitsPerPack !== undefined &&
+      (!Number.isInteger(input.unitsPerPack) || input.unitsPerPack < 1 || input.unitsPerPack > 10000)
+    ) {
+      throw new Error('INVALID_UNITS_PER_PACK')
+    }
+    const members = await prisma.product.count({ where: { groupName } })
+    if (members === 0) throw new Error('VARIANT_GROUP_NOT_FOUND')
+
+    const result = await prisma.product.updateMany({
+      where: { groupName },
+      data: {
+        ...(input.unitsPerPack !== undefined ? { unitsPerPack: input.unitsPerPack } : {}),
+        ...(input.orderNote !== undefined ? { orderNote: input.orderNote?.trim() || null } : {}),
+      },
+    })
+    return { updated: result.count }
+  }
+
+  /**
    * Add a new plain-frame SIZE: creates the group "מסגרת <WxH>" with one
    * product per requested color, all billing under one SKU (the given barcode,
    * or the first color's invented code when omitted). Size separators are

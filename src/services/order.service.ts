@@ -717,7 +717,8 @@ export class OrderService {
   /**
    * Set qtySupplied + picked flag for a single line during picking.
    * Allowed from SUBMITTED (warehouse may start adjusting immediately) through
-   * RECEIVED and PICKING. qtySupplied must be 0..qtyOrdered.
+   * RECEIVED and PICKING. qtySupplied may EXCEED qtyOrdered — franchisees
+   * sometimes phone in asking for extra units; the invoice bills qtySupplied.
    */
   static async updateItemSupply(
     orderId: string,
@@ -737,7 +738,7 @@ export class OrderService {
 
     const item = await prisma.orderItem.findUnique({ where: { id: itemId } })
     if (!item || item.orderId !== orderId) throw new Error('ITEM_NOT_FOUND')
-    if (!Number.isInteger(qtySupplied) || qtySupplied < 0 || qtySupplied > item.qtyOrdered) {
+    if (!Number.isInteger(qtySupplied) || qtySupplied < 0 || qtySupplied > 9999) {
       throw new Error('INVALID_QTY')
     }
 

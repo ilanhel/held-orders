@@ -351,6 +351,30 @@ describe('CatalogService', () => {
       await expect(CatalogService.setVariantGroupBarcode('מסגרת 10x15', '  ')).rejects.toThrow('INVALID_BARCODE')
       await expect(CatalogService.setVariantGroupBarcode('לא קיים', 'X1')).rejects.toThrow('VARIANT_GROUP_NOT_FOUND')
     })
+
+    it('setVariantGroupPack applies unitsPerPack + orderNote to all members', async () => {
+      await seedFrames()
+      const result = await CatalogService.setVariantGroupPack('מסגרת 10x15', {
+        unitsPerPack: 5,
+        orderNote: 'חבילה של 5 יחידות',
+      })
+      expect(result.updated).toBe(3)
+      const members = await prisma.product.findMany({ where: { groupName: 'מסגרת 10x15' } })
+      expect(members.every((m) => m.unitsPerPack === 5 && m.orderNote === 'חבילה של 5 יחידות')).toBe(true)
+
+      // clearing the note only
+      await CatalogService.setVariantGroupPack('מסגרת 10x15', { orderNote: null })
+      const after = await prisma.product.findFirst({ where: { groupName: 'מסגרת 10x15' } })
+      expect(after?.orderNote).toBeNull()
+      expect(after?.unitsPerPack).toBe(5)
+
+      await expect(
+        CatalogService.setVariantGroupPack('מסגרת 10x15', { unitsPerPack: 0 })
+      ).rejects.toThrow('INVALID_UNITS_PER_PACK')
+      await expect(
+        CatalogService.setVariantGroupPack('לא קיים', { unitsPerPack: 5 })
+      ).rejects.toThrow('VARIANT_GROUP_NOT_FOUND')
+    })
   })
 
   describe('getByBarcode', () => {
